@@ -76,7 +76,7 @@ function App() {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white gap-4">
       <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-      <p className="animate-pulse text-emerald-400 font-mono">LOADING WAR ROOM...</p>
+      <p className="animate-pulse text-emerald-400 font-mono">LOADING DATA...</p>
     </div>
   );
 
@@ -86,7 +86,7 @@ function App() {
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="bg-emerald-500 p-2 rounded-lg"><Box size={20} className="text-slate-900" /></div>
-            <div><h1 className="text-lg font-bold leading-none">BUNDLE HQ</h1><span className="text-xs text-slate-500">War Room v2.0</span></div>
+            <div><h1 className="text-lg font-bold leading-none">BUNDLE HQ</h1><span className="text-xs text-slate-500">SIREGAR FAMILY BUNDLE</span></div>
           </div>
           <button onClick={loadData} className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 active:rotate-180 transition-all"><RefreshCw size={18} className="text-emerald-400" /></button>
         </div>
