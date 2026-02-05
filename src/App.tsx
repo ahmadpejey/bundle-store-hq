@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from './api/inventory';
 import type { TransactionPayload } from './api/inventory';
-import { Package, TrendingUp, PlusCircle, MinusCircle, User, History, RefreshCw, Box } from 'lucide-react';
+import { Package, TrendingUp, PlusCircle, MinusCircle, User, RefreshCw, Box } from 'lucide-react';
 
 // --- UI COMPONENTS ---
 
