@@ -142,7 +142,7 @@ function App() {
                  <ResponsiveContainer width="100%" height="100%">
                    <RePie>
                      <Pie data={analytics.stock} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                       {analytics.stock.map((entry: any, index: number) => (
+                       {analytics.stock.map((_: any, index: number) => (
                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                        ))}
                      </Pie>
