@@ -43,5 +43,17 @@ export const InventoryAPI = {
     } catch (err) {
       handleApiError(err);
     }
-  }
+  },
+
+  // 4. Get Analytics Data
+  getAnalytics: async () => {
+    try {
+      const res = await fetch(`${API_CONFIG.INVENTORY_URL}?action=getAnalytics`);
+      return await res.json();
+    } catch (err) {
+      handleApiError(err);
+    }
+  },
+
+
 };
