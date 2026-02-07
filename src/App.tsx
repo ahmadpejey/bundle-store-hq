@@ -112,7 +112,10 @@ export default function App() {
             </div>
 
             <div className="mt-auto text-center">
-              <p className="text-[10px] text-slate-600 font-mono">Bundle Store HQ v1.0</p>
+              <p className="text-[10px] text-slate-600 font-regular tracking-[0.1em]">Siregar Family Bundle</p>
+              <p className="text-[12px] text-slate-600 font-bold uppercase">Stor Bundle Wira Damai</p>
+              <p className="text-[08px] text-slate-600 font-medium">Lorong Berlian 9, Kampung Melayu Wira Damai, 68100 Batu Caves, Selangor.</p>
+              <p className="text-[7px] text-slate-600 font-mono italic tracking-[0.05em]">powered by szalted</p>
             </div>
           </div>
         </div>
