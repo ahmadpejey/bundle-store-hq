@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { Store, ShoppingBag, Package, PieChart, FileText, Menu, X, Terminal } from 'lucide-react'; 
+import { Store, ShoppingBag, Package, PieChart, FileText, Menu, X } from 'lucide-react'; 
 import PointOfSale from './pages/PointOfSale';
 import InventoryManager from './pages/InventoryManager';
 import Reports from './pages/Reports';
@@ -79,7 +79,10 @@ export default function App() {
       {/* --- MOBILE MENU DRAWER --- */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[60] md:hidden">
+          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeMenu}></div>
+          
+          {/* Menu Content */}
           <div className="absolute right-0 top-0 bottom-0 w-64 bg-slate-900 border-l border-slate-800 p-6 flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
             <div className="flex justify-between items-center mb-8">
               <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Menu</span>

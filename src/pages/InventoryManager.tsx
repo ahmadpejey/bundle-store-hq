@@ -7,7 +7,7 @@ export default function InventoryManager() {
   const [items, setItems] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'quantity', direction: 'desc' });
-  const [viewMode, setViewMode] = useState<'STANDARD' | 'TERMINAL'>('STANDARD'); // NEW: View Mode State
+  const [viewMode, setViewMode] = useState<'STANDARD' | 'TERMINAL'>('STANDARD'); 
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -23,21 +23,17 @@ export default function InventoryManager() {
     } catch (e) { toast.error('Failed to load inventory'); }
   };
 
-  // --- LOGIC: Quick Stock Update (For Terminal Mode) ---
   const handleQuickStock = async (item: any, delta: number) => {
     const newQty = Math.max(0, item.quantity + delta);
     try {
-      // Optimistic Update (Instant UI feedback)
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantity: newQty } : i));
-      // Database Update
       await InventoryAPI.updateItem(item.id, item.bale_type, item.cost_price, item.sale_price, newQty, item.code, item.supplier_mark);
     } catch (e) {
       toast.error('Sync failed');
-      loadItems(); // Revert
+      loadItems(); 
     }
   };
 
-  // Statistik
   const totalBales = items.reduce((acc, item) => acc + (item.quantity || 0), 0);
   const totalStockValue = items.reduce((acc, item) => acc + ((item.cost_price || 0) * (item.quantity || 0)), 0);
   const lowStockItems = items.filter(item => item.quantity > 0 && item.quantity < 5).length;
@@ -64,7 +60,6 @@ export default function InventoryManager() {
     (i.supplier_mark || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  // Modal Functions
   const openAddModal = () => {
     setEditingId(null);
     setForm({ name: '', code: '', supplier: '', cost: 0, price: 0, qty: 0 });
@@ -107,10 +102,7 @@ export default function InventoryManager() {
   return (
     <div className={`h-full flex flex-col ${viewMode === 'TERMINAL' ? 'bg-black text-gray-300 font-mono' : 'bg-slate-950 text-slate-100 font-sans'} relative transition-colors duration-300`}>
       
-      {/* HEADER SECTION */}
       <div className={`${viewMode === 'TERMINAL' ? 'bg-gray-950 border-gray-800' : 'bg-slate-900 border-slate-800'} border-b shadow-sm shrink-0 transition-colors duration-300`}>
-        
-        {/* Top Bar: Title & View Switcher */}
         <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
             <div>
@@ -119,51 +111,28 @@ export default function InventoryManager() {
                 Inventory Manager
               </h1>
               <p className="text-xs opacity-50 uppercase tracking-wider font-bold">
-                {viewMode === 'TERMINAL' ? 'Fast Stock Update' : 'Manage Stock & Prices'}
+                {viewMode === 'TERMINAL' ? 'SUPERUSER CONSOLE' : 'Manage Stock & Prices'}
               </p>
             </div>
 
-            {/* View Mode Toggle */}
             <div className="flex bg-slate-950/50 p-1 rounded-lg border border-white/10">
-              <button 
-                onClick={() => setViewMode('STANDARD')} 
-                className={`p-1.5 rounded-md transition-all ${viewMode === 'STANDARD' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-white'}`}
-                title="Standard View"
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <button 
-                onClick={() => setViewMode('TERMINAL')} 
-                className={`p-1.5 rounded-md transition-all ${viewMode === 'TERMINAL' ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-500/30' : 'text-slate-500 hover:text-white'}`}
-                title="Terminal Mode (Quick Update)"
-              >
-                <Terminal size={18} />
-              </button>
+              <button onClick={() => setViewMode('STANDARD')} className={`p-1.5 rounded-md transition-all ${viewMode === 'STANDARD' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-white'}`} title="Standard View"><LayoutGrid size={18} /></button>
+              <button onClick={() => setViewMode('TERMINAL')} className={`p-1.5 rounded-md transition-all ${viewMode === 'TERMINAL' ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-500/30' : 'text-slate-500 hover:text-white'}`} title="Terminal Mode (Quick Update)"><Terminal size={18} /></button>
             </div>
           </div>
           
           <div className="flex flex-col-reverse md:flex-row gap-2 w-full md:w-auto">
             <div className="relative flex-1 md:w-64">
               <Search className="absolute left-3 top-2.5 opacity-50" size={16} />
-              <input 
-                className={`w-full bg-transparent border rounded-lg py-2 pl-9 pr-4 text-sm outline-none placeholder:opacity-40 focus:ring-1 
-                  ${viewMode === 'TERMINAL' ? 'border-gray-700 focus:border-white focus:ring-white text-white' : 'bg-slate-950 border-slate-700 focus:ring-emerald-500 text-white'}`}
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <input className={`w-full bg-transparent border rounded-lg py-2 pl-9 pr-4 text-sm outline-none placeholder:opacity-40 focus:ring-1 ${viewMode === 'TERMINAL' ? 'border-gray-700 focus:border-white focus:ring-white text-white' : 'bg-slate-950 border-slate-700 focus:ring-emerald-500 text-white'}`} placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <button onClick={openAddModal} className={`${viewMode === 'TERMINAL' ? 'bg-gray-800 border border-gray-600 hover:bg-gray-700' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'} px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors`}>
-              <Plus size={18} /> <span>New Item</span>
-            </button>
+            <button onClick={openAddModal} className={`${viewMode === 'TERMINAL' ? 'bg-gray-800 border border-gray-600 hover:bg-gray-700' : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'} px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors`}><Plus size={18} /> <span>New Item</span></button>
           </div>
         </div>
 
-        {/* --- STATS (ONLY IN STANDARD MODE) --- */}
         {viewMode === 'STANDARD' && (
           <>
             <div className="flex md:hidden gap-2 px-4 mb-4 overflow-x-auto pb-1 no-scrollbar">
-               {/* Mobile Sort Buttons */}
                {['quantity', 'bale_type', 'cost_price'].map(key => (
                  <button key={key} onClick={() => handleSort(key)} className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap flex items-center gap-1 border transition-colors ${sortConfig.key === key ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
                    {key === 'quantity' ? <Boxes size={14}/> : key === 'bale_type' ? <ArrowUpDown size={14}/> : <Wallet size={14}/>} 
@@ -181,13 +150,10 @@ export default function InventoryManager() {
         )}
       </div>
 
-      {/* --- CONTENT AREA --- */}
       <div className="flex-1 overflow-y-auto p-0 md:p-6 min-h-0">
         
-        {/* === VIEW 1: STANDARD (Visual) === */}
         {viewMode === 'STANDARD' && (
           <div className="max-w-7xl mx-auto pb-20 p-4 md:p-0">
-             {/* Mobile Card View */}
              <div className="grid grid-cols-1 gap-3 md:hidden">
               {filteredItems.map(item => (
                 <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center shadow-sm active:scale-[0.99] transition-transform" onClick={() => openEditModal(item)}>
@@ -201,7 +167,6 @@ export default function InventoryManager() {
               ))}
             </div>
 
-            {/* Desktop Table View */}
             <div className="hidden md:block bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-xl">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-950 text-slate-400 uppercase font-bold text-xs cursor-pointer select-none">
@@ -233,13 +198,10 @@ export default function InventoryManager() {
           </div>
         )}
 
-        {/* === VIEW 2: TERMINAL (Admin/Stock Taking) === */}
         {viewMode === 'TERMINAL' && (
           <div className="pb-20">
-             {filteredItems.map((item, index) => (
+             {filteredItems.map((item) => (
               <div key={item.id} className={`flex items-center justify-between p-3 border-b border-gray-900 ${item.quantity === 0 ? 'opacity-50' : ''} odd:bg-gray-900/20`}>
-                
-                {/* Item Info (Click to Edit) */}
                 <div className="flex-1 min-w-0 pr-4 cursor-pointer" onClick={() => openEditModal(item)}>
                   <div className="flex items-baseline gap-2">
                     <span className="text-emerald-500 font-bold font-mono text-sm w-10 shrink-0">{item.code || '--'}</span>
@@ -251,14 +213,11 @@ export default function InventoryManager() {
                     <span>S:{item.supplier_mark || '-'}</span>
                   </div>
                 </div>
-
-                {/* Quick Stock Buttons (Always Visible) */}
                 <div className="flex items-center bg-gray-900 rounded border border-gray-800 overflow-hidden shrink-0">
                   <button onClick={() => handleQuickStock(item, -1)} className="p-3 text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700"><Minus size={18}/></button>
                   <div className={`w-10 text-center font-mono font-bold text-lg ${item.quantity > 0 ? 'text-white' : 'text-red-500'}`}>{item.quantity}</div>
                   <button onClick={() => handleQuickStock(item, 1)} className="p-3 text-gray-400 hover:text-white hover:bg-gray-800 active:bg-gray-700"><Plus size={18}/></button>
                 </div>
-
               </div>
             ))}
           </div>
@@ -266,7 +225,6 @@ export default function InventoryManager() {
 
       </div>
 
-      {/* --- SHARED MODAL --- */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm p-4 md:p-4">
           <div className={`border rounded-t-2xl md:rounded-2xl w-full max-w-lg shadow-2xl animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-200 ${viewMode === 'TERMINAL' ? 'bg-black border-gray-600' : 'bg-slate-900 border-slate-700'}`}>
@@ -281,10 +239,11 @@ export default function InventoryManager() {
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto font-sans">
               <div className={`${viewMode === 'TERMINAL' ? 'bg-gray-900 border-gray-700' : 'bg-slate-800/50 border-slate-700'} p-4 rounded-xl border`}>
                 <label className={`text-xs uppercase font-bold mb-2 block flex justify-between ${viewMode === 'TERMINAL' ? 'text-gray-400' : 'text-emerald-400'}`}>Current Stock <span className="opacity-50">Unit: Bales</span></label>
+                
                 <div className="flex items-center justify-center gap-3">
                   <button onClick={() => setForm({...form, qty: Math.max(0, form.qty - 1)})} className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-lg border text-white ${viewMode === 'TERMINAL' ? 'bg-gray-800 border-gray-600' : 'bg-slate-800 border-slate-600'}`}><Minus size={24}/></button>
                   <input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className={`w-32 rounded-lg py-3 text-center text-3xl font-black text-white focus:ring-2 outline-none border ${viewMode === 'TERMINAL' ? 'bg-black border-gray-600 focus:ring-white' : 'bg-slate-950 border-emerald-500/50 focus:ring-emerald-500'}`} />
-                  <button onClick={() => setForm({...form, qty: form.qty + 1})} className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-lg text-white shadow-lg ${viewMode === 'TERMINAL' ? 'bg-gray-800 text-black hover:bg-gray-200' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'}`}><Plus size={24}/></button>
+                  <button onClick={() => setForm({...form, qty: form.qty + 1})} className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-lg text-white shadow-lg ${viewMode === 'TERMINAL' ? 'bg-white text-black hover:bg-gray-200' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'}`}><Plus size={24}/></button>
                 </div>
               </div>
 
