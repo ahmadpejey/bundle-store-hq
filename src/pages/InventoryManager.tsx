@@ -25,7 +25,7 @@ export default function InventoryManager() {
   // --- STATISTIK UNTUK BOSS ---
   const totalBales = items.reduce((acc, item) => acc + (item.quantity || 0), 0);
   const totalStockValue = items.reduce((acc, item) => acc + ((item.cost_price || 0) * (item.quantity || 0)), 0);
-  const lowStockItems = items.filter(item => item.quantity > 0 && item.quantity < 1).length;
+  const lowStockItems = items.filter(item => item.quantity > 0 && item.quantity < 5).length;
   // -----------------------------
 
   const handleSort = (key: string) => {
@@ -162,8 +162,10 @@ export default function InventoryManager() {
       {/* Table */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 min-h-0">
         <div className="max-w-7xl mx-auto pb-20">
-          <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-xl">
-            <table className="w-full text-left text-sm">
+          {/* 👇 FIXED: overflow-x-auto enables horizontal scrolling */}
+          <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-xl">
+            {/* 👇 FIXED: whitespace-nowrap prevents text wrapping, forcing scroll if needed */}
+            <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-slate-950 text-slate-400 uppercase font-bold text-xs cursor-pointer select-none">
                 <tr>
                   <th className="p-4 hover:text-white" onClick={() => handleSort('bale_type')}>Item Name <ArrowUpDown size={12} className="inline ml-1"/></th>
