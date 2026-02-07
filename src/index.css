@@ -13,51 +13,32 @@ body {
   background-color: #020617; /* Dark Slate 950 */
 }
 
-
-/* PRINT STYLES (A4) */
+/* --- PRINT STYLES (THE FIX) --- */
 @media print {
+  /* 1. Hide EVERYTHING by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* 2. Unhide ONLY the print container and its children */
+  #print-root, #print-root * {
+    visibility: visible;
+  }
+
+  /* 3. Position the print container at the absolute top-left */
+  #print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  /* 4. Reset Page Margins to avoid headers/footers */
   @page {
-    size: A4;
-    margin: 20mm;
-  }
-  
-  body {
-    background-color: white;
-    color: black;
-  }
-
-  /* Sembunyikan elemen navigasi dan tombol saat print */
-  nav, button, .no-print, input, select {
-    display: none !important;
-  }
-
-  /* Pastikan tabel tercetak dengan jelas */
-  .print-container {
-    overflow: visible !important;
-    height: auto !important;
-    position: static !important;
-  }
-
-  table {
-    width: 100% !important;
-    border-collapse: collapse;
-    font-size: 10pt;
-    color: black !important;
-  }
-
-  th, td {
-    border: 1px solid #000;
-    padding: 4px;
-    color: black !important;
-  }
-
-  /* Paksa teks hitam di atas kertas putih */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color: black !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    text-shadow: none !important;
+    size: auto;
+    margin: 0mm;
   }
 }

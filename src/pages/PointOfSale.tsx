@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { InventoryAPI } from '../api/inventory';
-import { Search, ShoppingCart, Trash, Plus, Minus, CreditCard, ChevronDown, User, Package, QrCode, Banknote, Smartphone, Clock, BookUser } from 'lucide-react';
+import { PrintableReceipt } from '../components/PrintableReceipt';
+import { Search, ShoppingCart, Trash, Plus, Minus, CreditCard, ChevronDown, User, Package, QrCode, Banknote, Smartphone, Clock, BookUser, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PointOfSale() {
@@ -12,15 +13,18 @@ export default function PointOfSale() {
   
   // Payment States
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  // Added 'SALE_DETAILS' to handle the name input for normal sales
   const [transactionMode, setTransactionMode] = useState<'PAY' | 'RESERVE' | 'DEBT' | 'SALE_DETAILS'>('PAY');
-  const [selectedMethod, setSelectedMethod] = useState<string>(''); // Store method (CASH/QR/etc)
+  const [selectedMethod, setSelectedMethod] = useState<string>(''); 
   const [clientName, setClientName] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   
   // Name Suggestion
   const [debtorList, setDebtorList] = useState<string[]>([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+
+  // Print State
+  const [lastReceipt, setLastReceipt] = useState<any>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { 
     loadInventory(); 
@@ -57,14 +61,26 @@ export default function PointOfSale() {
   const addToCart = (item: any) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
-      if (existing) return prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i);
+      if (existing) {
+        return prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i);
+      }
       toast.success(`Added ${item.bale_type}`);
       return [...prev, { ...item, qty: 1, customPrice: item.sale_price }];
     });
   };
 
-  const removeFromCart = (id: number) => { setCart(prev => prev.filter(i => i.id !== id)); };
-  const updateQty = (id: number, delta: number) => { setCart(prev => prev.map(i => i.id === id ? { ...i, qty: Math.max(1, i.qty + delta) } : i)); };
+  const removeFromCart = (id: number) => {
+    setCart(prev => prev.filter(i => i.id !== id));
+  };
+
+  const updateQty = (id: number, delta: number) => {
+    setCart(prev => prev.map(i => {
+      if (i.id === id) {
+        return { ...i, qty: Math.max(1, i.qty + delta) };
+      }
+      return i;
+    }));
+  };
   
   const handleChargeClick = () => {
     if (cart.length === 0) return toast.error("Cart is empty");
@@ -77,16 +93,23 @@ export default function PointOfSale() {
 
   const handlePaymentMethodSelect = (method: string) => {
     setSelectedMethod(method);
-    setTransactionMode('SALE_DETAILS'); // Move to name input screen
+    setTransactionMode('SALE_DETAILS'); 
+  };
+
+  const triggerPrint = () => {
+    if (printRef.current) {
+      window.print();
+    }
   };
 
   const processCheckout = async (paymentMethod: string) => {
-    // Validate Name for all modes except simple 'PAY' (which is now bypassed)
     if (transactionMode !== 'PAY' && !clientName) return toast.error("Please enter Client Name!");
 
     setIsPaymentModalOpen(false);
     
-    // Wording Logic
+    // GENERATE ONE RECEIPT ID FOR THE WHOLE CART
+    const receiptId = InventoryAPI.getNewReceiptID(); 
+    
     let modeText = 'Processing';
     if (transactionMode === 'RESERVE') modeText = 'Booking';
     if (transactionMode === 'DEBT') modeText = 'Recording Hutang';
@@ -95,23 +118,17 @@ export default function PointOfSale() {
     const loadingToast = toast.loading(`${modeText}...`);
 
     try {
+      // Calculate total for Receipt
+      const totalForReceipt = cart.reduce((acc, item) => acc + (item.customPrice * item.qty), 0);
+
       for (const item of cart) {
-        // Wording Logic untuk Remarks
         let remarkText = 'POS Checkout';
         if (transactionMode === 'RESERVE') remarkText = `Booking: ${clientName}`;
         if (transactionMode === 'DEBT') remarkText = `Hutang: ${clientName}`;
-        if (transactionMode === 'SALE_DETAILS') remarkText = `Sale: ${clientName}`; // Normal sale with name
+        if (transactionMode === 'SALE_DETAILS') remarkText = `Sale: ${clientName}`;
 
-        // Determine Action Type
-        // SALE_DETAILS is just a UI state, the DB action is still 'SALE'
         const dbActionType = (transactionMode === 'SALE_DETAILS' || transactionMode === 'PAY') ? 'SALE' : transactionMode;
-
-        // Determine Price
-        // Normal Sale = Full Price
-        // Reserve/Debt = Deposit Amount (or 0)
-        const dbSalePrice = (transactionMode === 'SALE_DETAILS' || transactionMode === 'PAY') 
-          ? (item.customPrice * item.qty) 
-          : (Number(depositAmount) || 0);
+        const dbSalePrice = (item.customPrice * item.qty); // Track value per item
 
         await InventoryAPI.logTransaction({
           actionType: dbActionType,
@@ -120,15 +137,36 @@ export default function PointOfSale() {
           salePrice: dbSalePrice,
           operator: operator,
           remarks: remarkText,
-          paymentMethod: paymentMethod
+          paymentMethod: paymentMethod,
+          receiptNo: receiptId 
         });
       }
+
+      setLastReceipt({
+        receiptNo: receiptId,
+        date: new Date().toISOString(),
+        cashier: operator,
+        items: [...cart],
+        total: totalForReceipt,
+        paymentMethod: paymentMethod,
+        customerName: clientName,
+        type: 'THERMAL'
+      });
+
       toast.dismiss(loadingToast);
       toast.success('Transaction Successful!');
       setCart([]);
       setShowCartMobile(false);
       loadInventory();
       loadDebtors(); 
+      
+      // Auto trigger print
+      setTimeout(() => {
+        if(confirm("Print Receipt?")) {
+           triggerPrint();
+        }
+      }, 500);
+
     } catch (e) {
       toast.dismiss(loadingToast);
       toast.error('Transaction Failed');
@@ -148,6 +186,14 @@ export default function PointOfSale() {
 
   return (
     <div className="h-full flex flex-col md:flex-row bg-slate-950 text-white relative font-sans">
+      
+      {/* --- FIXED: WRAP RECEIPT IN #print-root FOR CSS VISIBILITY --- */}
+      <div id="print-root">
+        {lastReceipt && (
+          <PrintableReceipt ref={printRef} {...lastReceipt} />
+        )}
+      </div>
+
       {/* LEFT SECTION (Inventory Grid) */}
       <div className="flex-1 flex flex-col h-full min-h-0">
         <div className="p-3 md:p-4 border-b border-slate-800 flex flex-col gap-3 bg-slate-900/50 z-10 shrink-0">
@@ -209,6 +255,12 @@ export default function PointOfSale() {
         </div>
         <div className="p-4 bg-slate-900 border-t border-slate-800 safe-area-bottom shrink-0">
           <div className="flex justify-between items-end mb-4 px-1"><span className="text-slate-400 font-medium">Total Payable</span><span className="text-3xl font-black text-white">RM {totalAmount}</span></div>
+          
+           {/* REPRINT BUTTON (Visible if receipt exists) */}
+           {lastReceipt && (
+             <button onClick={triggerPrint} className="w-full bg-slate-800 hover:bg-slate-700 text-white mb-2 py-3 rounded-xl flex items-center justify-center gap-2"><Printer size={18}/> Reprint Last Receipt</button>
+          )}
+
           <button onClick={handleChargeClick} disabled={cart.length === 0} className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-black py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all"><CreditCard size={20} /> CHARGE</button>
         </div>
       </div>
@@ -248,7 +300,7 @@ export default function PointOfSale() {
               <div className="space-y-4">
                 <div className="relative">
                   <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Customer</label>
-                  <input autoFocus value={clientName} onChange={handleNameChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nama" />
+                  <input autoFocus value={clientName} onChange={handleNameChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Search or type new name..." />
                   
                   {filteredSuggestions.length > 0 && (
                     <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 max-h-32 overflow-y-auto">
