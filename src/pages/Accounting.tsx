@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from '../api/inventory';
-import { Trash2, Edit, Save, X, Search, FileText, Printer, Calendar, CheckCircle, Banknote, QrCode, Smartphone, Undo2 } from 'lucide-react';
+import { Trash2, Edit, Save, X, Search, FileText, Printer, Calendar, CheckCircle, Banknote, QrCode, Smartphone, Undo2, User, Box } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Accounting() {
@@ -28,7 +28,6 @@ export default function Accounting() {
   };
 
   const handleDelete = async (id: number, type: string) => {
-    // WORDING FIX: Tukar perkataan Reserve kepada Booking dalam mesej
     const message = type === 'RESERVE' 
       ? 'Cancel Booking & Return item to Stock?' 
       : `VOID this ${type} record? Stock will be reversed.`;
@@ -89,29 +88,29 @@ export default function Accounting() {
 
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-100 font-sans print-container relative">
+      
+      {/* Header & Filters */}
       <div className="p-4 border-b border-slate-800 bg-slate-900 shadow-sm shrink-0 flex flex-col gap-4 no-print">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-xl font-bold text-white flex items-center gap-2"><FileText className="text-blue-400" size={20} /> Accounting Ledger</h1>
             <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Financial Records</p>
           </div>
-          <button onClick={handlePrint} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"><Printer size={18}/> Print / PDF</button>
+          <button onClick={handlePrint} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"><Printer size={18}/> <span className="hidden md:inline">Print Report</span></button>
         </div>
         
+        {/* Filter Bar */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <div className="relative"><Calendar className="absolute left-3 top-2.5 text-slate-500" size={14} /><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-2 text-xs text-white" /></div>
           <div className="relative"><Calendar className="absolute left-3 top-2.5 text-slate-500" size={14} /><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-2 text-xs text-white" /></div>
-          
-          {/* WORDING FIX: Dropdown Options */}
           <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white">
             <option value="ALL">All Types</option>
             <option value="SALE">Sale</option>
             <option value="DEBT">Hutang</option>
-            <option value="RESERVE">Booking (In Shop)</option>
+            <option value="RESERVE">Booking</option>
             <option value="IN">Stock In</option>
             <option value="OUT">Stock Out</option>
           </select>
-
           <select value={filterCashier} onChange={e => setFilterCashier(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white">
             <option value="ALL">All Cashiers</option>
             {['SAIFUL', 'MADAN', 'SAMSUL'].map(c => <option key={c} value={c}>{c}</option>)}
@@ -120,14 +119,78 @@ export default function Accounting() {
         </div>
       </div>
 
+      {/* Print Header */}
       <div className="hidden print:block p-4 text-black text-center border-b border-black">
         <h1 className="text-2xl font-bold">Laporan Jualan Bundle Wira Damai</h1>
         <p className="text-sm">Dicetak pada: {new Date().toLocaleDateString()}</p>
       </div>
 
+      {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 min-h-0 print:p-0 print:overflow-visible">
         <div className="max-w-7xl mx-auto pb-20 print:pb-0">
-          <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-xl print:bg-white print:border-none print:shadow-none">
+          
+          {/* --- MOBILE CARD VIEW (New Feature) --- */}
+          <div className="md:hidden space-y-3 no-print">
+            {filtered.map((tx) => {
+              const typeColor = tx.action_type === 'SALE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
+                                tx.action_type === 'RESERVE' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                                tx.action_type === 'DEBT' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                                'bg-slate-800 border-slate-700 text-slate-400';
+              const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : tx.action_type === 'DEBT' ? 'HUTANG' : tx.action_type;
+
+              return (
+                <div key={tx.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
+                  {/* Top Row: Date & Status */}
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="text-[10px] text-slate-500 font-mono">
+                      {new Date(tx.created_at).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${typeColor}`}>
+                      {displayType}
+                    </span>
+                  </div>
+
+                  {/* Main Content */}
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <h3 className="font-bold text-white text-sm line-clamp-1">{tx.bale_type}</h3>
+                      {tx.remarks && <p className="text-xs text-slate-500 italic mt-0.5">{tx.remarks}</p>}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-black text-white">RM {(tx.price || 0).toFixed(2)}</div>
+                      <div className="text-[10px] text-slate-500">{tx.qty} Unit(s)</div>
+                    </div>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-800/50">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <User size={12}/> {tx.operator}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {/* Settle Button */}
+                      {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && (
+                        <button onClick={() => openSettleModal(tx)} className="bg-yellow-500 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-yellow-400">
+                          <CheckCircle size={14}/> Settle
+                        </button>
+                      )}
+                      {/* Cancel/Edit Buttons */}
+                      <button onClick={() => startEdit(tx)} className="p-1.5 text-blue-400 bg-slate-800 rounded-lg hover:bg-blue-900/20"><Edit size={16}/></button>
+                      {tx.action_type === 'RESERVE' ? (
+                        <button onClick={() => handleDelete(tx.id, 'RESERVE')} className="p-1.5 text-rose-400 bg-slate-800 rounded-lg hover:bg-rose-900/20"><Undo2 size={16}/></button>
+                      ) : (
+                        <button onClick={() => handleDelete(tx.id, tx.action_type)} className="p-1.5 text-rose-400 bg-slate-800 rounded-lg hover:bg-rose-900/20"><Trash2 size={16}/></button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* --- DESKTOP TABLE VIEW (Hidden on Mobile) --- */}
+          <div className="hidden md:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-xl print:bg-white print:border-none print:shadow-none print:block">
             <table className="w-full text-left text-sm whitespace-nowrap print:text-black">
               <thead className="bg-slate-950 text-slate-400 uppercase font-bold text-xs border-b border-slate-800 print:bg-white print:text-black print:border-black">
                 <tr><th className="p-4">Date</th><th className="p-4">Type</th><th className="p-4">Item</th><th className="p-4 text-center">Qty</th><th className="p-4 text-right">Amount</th><th className="p-4 text-right no-print">Profit</th><th className="p-4">Cashier</th><th className="p-4 text-right no-print">Action</th></tr>
@@ -142,10 +205,7 @@ export default function Accounting() {
                                     tx.action_type === 'DEBT' ? 'bg-rose-500/10 text-rose-400' :
                                     tx.action_type === 'IN' ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-500/10 text-slate-400';
 
-                  // WORDING FIX: Tukar label paparan
-                  const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : 
-                                      tx.action_type === 'DEBT' ? 'HUTANG' : 
-                                      tx.action_type;
+                  const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : tx.action_type === 'DEBT' ? 'HUTANG' : tx.action_type;
 
                   return (
                     <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors print:hover:bg-transparent">
@@ -161,18 +221,13 @@ export default function Accounting() {
                           <><button onClick={saveEdit} className="p-1.5 text-emerald-400 bg-emerald-400/10 rounded"><Save size={16}/></button><button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 bg-slate-800 rounded"><X size={16}/></button></>
                         ) : (
                           <>
-                            {/* Butang Settle (Bayar Hutang/Booking) */}
                             {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && (
                               <button onClick={() => openSettleModal(tx)} className="p-1.5 text-yellow-400 bg-yellow-400/10 rounded hover:bg-yellow-400/20" title="Settle Payment"><CheckCircle size={16}/></button>
                             )}
-                            
-                            {/* Butang Return Stock untuk Booking */}
                             {tx.action_type === 'RESERVE' && (
                               <button onClick={() => handleDelete(tx.id, 'RESERVE')} className="p-1.5 text-blue-400 bg-blue-400/10 rounded hover:bg-blue-400/20" title="Return to Stock"><Undo2 size={16}/></button>
                             )}
-
                             <button onClick={() => startEdit(tx)} className="p-1.5 text-blue-400 hover:bg-blue-400/10 rounded"><Edit size={16}/></button>
-                            {/* Butang Delete untuk Hutang/Lain-lain */}
                             {tx.action_type !== 'RESERVE' && (
                               <button onClick={() => handleDelete(tx.id, tx.action_type)} className="p-1.5 text-rose-400 hover:bg-rose-400/10 rounded"><Trash2 size={16}/></button>
                             )}
