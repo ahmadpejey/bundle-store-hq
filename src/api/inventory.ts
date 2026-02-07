@@ -64,10 +64,13 @@ export const InventoryAPI = {
     const { error } = await supabase.from('inventory').insert([{ bale_type: name, quantity: 0, cost_price: cost, sale_price: price }]);
     if (error) throw error;
   },
-  updateItem: async (id: number, name: string, cost: number, price: number) => {
-    const { error } = await supabase.from('inventory').update({ bale_type: name, cost_price: cost, sale_price: price }).eq('id', id);
+  
+  // 👇 FIXED: Added 'qty' parameter here to match InventoryManager.tsx
+  updateItem: async (id: number, name: string, cost: number, price: number, qty: number) => {
+    const { error } = await supabase.from('inventory').update({ bale_type: name, cost_price: cost, sale_price: price, quantity: qty }).eq('id', id);
     if (error) throw error;
   },
+  
   deleteItem: async (id: number) => {
     const { error } = await supabase.from('inventory').delete().eq('id', id);
     if (error) throw error;
@@ -103,14 +106,8 @@ export const InventoryAPI = {
       if (!grouped[label]) grouped[label] = { revenue: 0, profit: 0, cost: 0 };
 
       const revenue = tx.price || 0;
-      const cost = (tx.cost_price || 0); // Cost for this single unit
-      // Note: If you sold multiple qty in one tx, multiply. Assuming tx logs per row or handled in qty
-      // Correction: Qty is in tx.
-      const totalRev = revenue; // Assuming price is TOTAL for the row? Or per unit?
-      // Let's assume price is TOTAL price passed from POS.
-      // But cost is usually PER UNIT. Let's adjust math:
-      // Profit = (Revenue) - (UnitCost * Qty)
       
+      // 👇 FIXED: Removed unused 'cost' and 'totalRev' variables that caused build error
       const totalCost = (tx.cost_price || 0) * tx.qty;
       
       grouped[label].revenue += revenue;
@@ -182,6 +179,4 @@ export const InventoryAPI = {
     
     if (delError) throw delError;
   }
-
-  
 };
