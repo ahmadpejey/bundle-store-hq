@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { InventoryAPI } from '../api/inventory';
 import { PrintableReceipt } from '../components/PrintableReceipt';
-import { Search, ShoppingCart, Trash, Plus, Minus, CreditCard, ChevronDown, User, Package, QrCode, Banknote, Smartphone, Clock, BookUser, Printer } from 'lucide-react';
+import { Search, ShoppingCart, Trash, Plus, Minus, CreditCard, ChevronDown, User, Package, QrCode, Banknote, Smartphone, Clock, BookUser, Printer, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PointOfSale() {
@@ -18,6 +18,9 @@ export default function PointOfSale() {
   const [clientName, setClientName] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   
+  // NEW: State untuk Final Adjustment (Diskaun "Alah bang kurang sikit")
+  const [adjustedTotal, setAdjustedTotal] = useState<string>(''); 
+
   // Name Suggestion
   const [debtorList, setDebtorList] = useState<string[]>([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
@@ -32,62 +35,38 @@ export default function PointOfSale() {
   }, []);
 
   const loadInventory = async () => {
-    try {
-      const data = await InventoryAPI.getFullInventory();
-      setItems(data);
-    } catch (e) { toast.error("Connection failed"); }
+    try { const data = await InventoryAPI.getFullInventory(); setItems(data); } catch (e) { toast.error("Connection failed"); }
   };
-
-  const loadDebtors = async () => {
-    const names = await InventoryAPI.getDebtors();
-    setDebtorList(names as string[]);
-  };
-
+  const loadDebtors = async () => { const names = await InventoryAPI.getDebtors(); setDebtorList(names as string[]); };
+  
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setClientName(val);
-    if (val.length > 0) {
-      setFilteredSuggestions(debtorList.filter(name => name.toLowerCase().includes(val.toLowerCase())));
-    } else {
-      setFilteredSuggestions([]);
-    }
+    const val = e.target.value; setClientName(val);
+    if (val.length > 0) { setFilteredSuggestions(debtorList.filter(name => name.toLowerCase().includes(val.toLowerCase()))); } else { setFilteredSuggestions([]); }
   };
-
-  const selectSuggestion = (name: string) => {
-    setClientName(name);
-    setFilteredSuggestions([]);
-  };
-
+  const selectSuggestion = (name: string) => { setClientName(name); setFilteredSuggestions([]); };
+  
   const addToCart = (item: any) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i);
-      }
+      if (existing) { return prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i); }
       toast.success(`Added ${item.bale_type}`);
       return [...prev, { ...item, qty: 1, customPrice: item.sale_price }];
     });
   };
-
-  const removeFromCart = (id: number) => {
-    setCart(prev => prev.filter(i => i.id !== id));
-  };
-
-  const updateQty = (id: number, delta: number) => {
-    setCart(prev => prev.map(i => {
-      if (i.id === id) {
-        return { ...i, qty: Math.max(1, i.qty + delta) };
-      }
-      return i;
-    }));
-  };
+  const removeFromCart = (id: number) => { setCart(prev => prev.filter(i => i.id !== id)); };
+  const updateQty = (id: number, delta: number) => { setCart(prev => prev.map(i => i.id === id ? { ...i, qty: Math.max(1, i.qty + delta) } : i)); };
   
+  const totalAmountOriginal = cart.reduce((acc, item) => acc + (item.customPrice * item.qty), 0);
+  const totalQty = cart.reduce((acc, item) => acc + item.qty, 0);
+
   const handleChargeClick = () => {
     if (cart.length === 0) return toast.error("Cart is empty");
     setTransactionMode('PAY');
     setSelectedMethod('');
     setClientName('');
     setDepositAmount('');
+    // Reset adjusted total to original total initially
+    setAdjustedTotal(totalAmountOriginal.toString());
     setIsPaymentModalOpen(true);
   };
 
@@ -97,19 +76,15 @@ export default function PointOfSale() {
   };
 
   const triggerPrint = () => {
-    if (printRef.current) {
-      window.print();
-    }
+    if (printRef.current) { window.print(); }
   };
 
   const processCheckout = async (paymentMethod: string) => {
-    if (transactionMode !== 'PAY' && !clientName) return toast.error("Please enter Client Name!");
+    if (transactionMode !== 'PAY' && !clientName && transactionMode !== 'SALE_DETAILS') return toast.error("Please enter Client Name!");
 
     setIsPaymentModalOpen(false);
     
-    // GENERATE ONE RECEIPT ID FOR THE WHOLE CART
     const receiptId = InventoryAPI.getNewReceiptID(); 
-    
     let modeText = 'Processing';
     if (transactionMode === 'RESERVE') modeText = 'Booking';
     if (transactionMode === 'DEBT') modeText = 'Recording Hutang';
@@ -118,23 +93,52 @@ export default function PointOfSale() {
     const loadingToast = toast.loading(`${modeText}...`);
 
     try {
-      // Calculate total for Receipt
-      const totalForReceipt = cart.reduce((acc, item) => acc + (item.customPrice * item.qty), 0);
+      // LOGIC DISKAUN: Kira nisbah harga baru berbanding harga asal
+      // Jika harga asal RM360, harga baru RM350. Ratio = 0.9722
+      // Setiap item akan didarab dengan ratio ini.
+      const finalPayable = Number(adjustedTotal) || totalAmountOriginal;
+      const discountRatio = totalAmountOriginal > 0 ? (finalPayable / totalAmountOriginal) : 1;
+      
+      const cartToSave = [];
 
       for (const item of cart) {
         let remarkText = 'POS Checkout';
         if (transactionMode === 'RESERVE') remarkText = `Booking: ${clientName}`;
         if (transactionMode === 'DEBT') remarkText = `Hutang: ${clientName}`;
-        if (transactionMode === 'SALE_DETAILS') remarkText = `Sale: ${clientName}`;
+        if (transactionMode === 'SALE_DETAILS') {
+            remarkText = clientName ? `Sale: ${clientName}` : 'POS Sale';
+        }
 
         const dbActionType = (transactionMode === 'SALE_DETAILS' || transactionMode === 'PAY') ? 'SALE' : transactionMode;
-        const dbSalePrice = (item.customPrice * item.qty); // Track value per item
+        
+        // Kira harga per item SELEPAS diskaun (jika ada adjustment)
+        // Hanya untuk mode SALE/PAY. Kalau Booking/Hutang, harga barang kekal harga asal (sebab belum bayar habis)
+        let actualItemSalePrice = item.customPrice * item.qty;
+        
+        if (transactionMode === 'SALE_DETAILS' || transactionMode === 'PAY') {
+           actualItemSalePrice = actualItemSalePrice * discountRatio;
+        } else {
+           // Untuk Booking/Debt, kita rekod deposit sebagai sebahagian, tapi harga item mungkin tak kacau?
+           // Untuk simplicity, 'price' dalam transaction table ialah "Amount Paid/Owed" untuk rekod itu.
+           // Kalau Debt, amount paid = deposit (kosong). Harga barang kekal dalam inventory record?
+           // Table transaction log sales flow.
+           // Kita ikut logic asal: Price = Amount terlibat dalam transaksi ini.
+           actualItemSalePrice = (transactionMode === 'RESERVE' || transactionMode === 'DEBT') 
+             ? (Number(depositAmount) / cart.length) // Agih deposit sama rata (rough logic)
+             : actualItemSalePrice;
+        }
+
+        const savedItem = {
+          ...item,
+          price: actualItemSalePrice // Update price for Receipt display
+        };
+        cartToSave.push(savedItem);
 
         await InventoryAPI.logTransaction({
           actionType: dbActionType,
           baleType: item.bale_type,
           qty: item.qty,
-          salePrice: dbSalePrice,
+          salePrice: actualItemSalePrice,
           operator: operator,
           remarks: remarkText,
           paymentMethod: paymentMethod,
@@ -146,8 +150,8 @@ export default function PointOfSale() {
         receiptNo: receiptId,
         date: new Date().toISOString(),
         cashier: operator,
-        items: [...cart],
-        total: totalForReceipt,
+        items: cartToSave, // Use the discounted items for receipt
+        total: (transactionMode === 'RESERVE' || transactionMode === 'DEBT') ? Number(depositAmount) : finalPayable,
         paymentMethod: paymentMethod,
         customerName: clientName,
         type: 'THERMAL'
@@ -160,11 +164,8 @@ export default function PointOfSale() {
       loadInventory();
       loadDebtors(); 
       
-      // Auto trigger print
       setTimeout(() => {
-        if(confirm("Print Receipt?")) {
-           triggerPrint();
-        }
+        if(confirm("Print Receipt?")) { triggerPrint(); }
       }, 500);
 
     } catch (e) {
@@ -172,9 +173,6 @@ export default function PointOfSale() {
       toast.error('Transaction Failed');
     }
   };
-
-  const totalAmount = cart.reduce((acc, item) => acc + (item.customPrice * item.qty), 0);
-  const totalQty = cart.reduce((acc, item) => acc + item.qty, 0);
 
   const sortedAndFilteredItems = items
     .filter(i => (i.bale_type || '').toLowerCase().includes(search.toLowerCase()) || (i.code || '').toLowerCase().includes(search.toLowerCase()))
@@ -187,16 +185,13 @@ export default function PointOfSale() {
   return (
     <div className="h-full flex flex-col md:flex-row bg-slate-950 text-white relative font-sans">
       
-      {/* --- FIXED: WRAP RECEIPT IN #print-root FOR CSS VISIBILITY --- */}
       <div id="print-root">
-        {lastReceipt && (
-          <PrintableReceipt ref={printRef} {...lastReceipt} />
-        )}
+        {lastReceipt && <PrintableReceipt ref={printRef} {...lastReceipt} />}
       </div>
 
-      {/* LEFT SECTION (Inventory Grid) */}
+      {/* LEFT SECTION */}
       <div className="flex-1 flex flex-col h-full min-h-0">
-        <div className="p-3 md:p-4 border-b border-slate-800 flex flex-col gap-3 bg-slate-900/50 z-10 shrink-0">
+         <div className="p-3 md:p-4 border-b border-slate-800 flex flex-col gap-3 bg-slate-900/50 z-10 shrink-0">
           <div className="relative bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 flex items-center gap-3 w-full md:w-fit cursor-pointer">
             <div className="bg-emerald-500/10 p-1.5 rounded-lg"><User size={16} className="text-emerald-400" /></div>
             <div className="flex flex-col"><span className="text-[10px] uppercase font-bold text-slate-500 leading-none mb-0.5">Cashier</span><span className="font-bold text-white text-sm leading-none">{operator}</span></div>
@@ -230,7 +225,7 @@ export default function PointOfSale() {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 p-3 z-40 safe-area-bottom">
         <button onClick={() => setShowCartMobile(true)} className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl p-1 flex items-center justify-between shadow-lg active:scale-[0.99]">
           <div className="bg-slate-950/20 rounded-lg px-4 py-3 flex items-center gap-2"><ShoppingCart size={20} className="text-slate-900" /><span className="font-black text-lg">{totalQty}</span></div>
-          <span className="font-black text-xl pr-6">RM {totalAmount}</span>
+          <span className="font-black text-xl pr-6">RM {totalAmountOriginal}</span>
         </button>
       </div>
 
@@ -254,13 +249,10 @@ export default function PointOfSale() {
           ))}
         </div>
         <div className="p-4 bg-slate-900 border-t border-slate-800 safe-area-bottom shrink-0">
-          <div className="flex justify-between items-end mb-4 px-1"><span className="text-slate-400 font-medium">Total Payable</span><span className="text-3xl font-black text-white">RM {totalAmount}</span></div>
-          
-           {/* REPRINT BUTTON (Visible if receipt exists) */}
-           {lastReceipt && (
+          <div className="flex justify-between items-end mb-4 px-1"><span className="text-slate-400 font-medium">Total Payable</span><span className="text-3xl font-black text-white">RM {totalAmountOriginal}</span></div>
+          {lastReceipt && (
              <button onClick={triggerPrint} className="w-full bg-slate-800 hover:bg-slate-700 text-white mb-2 py-3 rounded-xl flex items-center justify-center gap-2"><Printer size={18}/> Reprint Last Receipt</button>
           )}
-
           <button onClick={handleChargeClick} disabled={cart.length === 0} className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 disabled:text-slate-600 text-slate-950 font-black py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all"><CreditCard size={20} /> CHARGE</button>
         </div>
       </div>
@@ -269,11 +261,10 @@ export default function PointOfSale() {
       {isPaymentModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-6">
-            
             <div className="text-center">
               <h2 className="text-2xl font-black text-white">
                 {transactionMode === 'PAY' ? 'Select Payment' : 
-                 transactionMode === 'SALE_DETAILS' ? 'Customer Details' : 
+                 transactionMode === 'SALE_DETAILS' ? 'Payment Details' : 
                  transactionMode === 'RESERVE' ? 'Booking Item' : 'Rekod Hutang'}
               </h2>
               <p className="text-slate-400 text-sm mt-1">
@@ -284,25 +275,21 @@ export default function PointOfSale() {
             </div>
 
             {transactionMode === 'PAY' ? (
-              // MODE 1: SELECT METHOD
               <div className="grid gap-3">
                 <button onClick={() => handlePaymentMethodSelect('CASH')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-emerald-500/50"><div className="bg-emerald-500/10 p-3 rounded-lg text-emerald-400"><Banknote size={24} /></div><span className="font-bold text-lg">Cash</span></button>
                 <button onClick={() => handlePaymentMethodSelect('QR_PAY')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-pink-500/50"><div className="bg-pink-500/10 p-3 rounded-lg text-pink-400"><QrCode size={24} /></div><span className="font-bold text-lg">QR Pay</span></button>
                 <button onClick={() => handlePaymentMethodSelect('TRANSFER')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-blue-500/50"><div className="bg-blue-500/10 p-3 rounded-lg text-blue-400"><Smartphone size={24} /></div><span className="font-bold text-lg">Transfer</span></button>
-                
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   <button onClick={() => setTransactionMode('RESERVE')} className="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:bg-yellow-500/10 hover:border-yellow-500 text-yellow-500 flex flex-col items-center gap-1"><Clock size={20}/><span className="text-xs font-bold">Booking</span></button>
                   <button onClick={() => setTransactionMode('DEBT')} className="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:bg-rose-500/10 hover:border-rose-500 text-rose-500 flex flex-col items-center gap-1"><BookUser size={20}/><span className="text-xs font-bold">Hutang</span></button>
                 </div>
               </div>
             ) : (
-              // MODE 2: INPUT FORM (SALE_DETAILS, RESERVE, DEBT)
               <div className="space-y-4">
                 <div className="relative">
-                  <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Customer</label>
-                  <input autoFocus value={clientName} onChange={handleNameChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Search or type new name..." />
-                  
-                  {filteredSuggestions.length > 0 && (
+                  <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Customer (Optional)</label>
+                  <input autoFocus value={clientName} onChange={handleNameChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Name..." />
+                   {filteredSuggestions.length > 0 && (
                     <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 max-h-32 overflow-y-auto">
                       {filteredSuggestions.map((name, idx) => (
                         <button key={idx} onClick={() => selectSuggestion(name)} className="w-full text-left px-4 py-2 hover:bg-slate-700 text-sm">{name}</button>
@@ -311,15 +298,29 @@ export default function PointOfSale() {
                   )}
                 </div>
 
-                {/* Show Deposit Field ONLY for Reserve/Debt. For Sale, show Total. */}
                 {transactionMode === 'SALE_DETAILS' ? (
-                   <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl text-center">
-                     <p className="text-xs text-emerald-400 uppercase font-bold mb-1">Total to Pay</p>
-                     <p className="text-3xl font-black text-white">RM {totalAmount}</p>
+                   <div className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                     <div className="flex justify-between items-center mb-2">
+                        <label className="text-xs uppercase font-bold text-slate-400">Total Amount</label>
+                        <span className="text-xs text-slate-500 line-through">RM {totalAmountOriginal}</span>
+                     </div>
+                     <div className="relative flex items-center gap-2">
+                       <span className="text-emerald-400 font-black text-xl">RM</span>
+                       {/* INPUT UNTUK UBAH HARGA (DISKAUN MANUAL) */}
+                       <input 
+                         type="number" 
+                         value={adjustedTotal} 
+                         onChange={(e) => setAdjustedTotal(e.target.value)} 
+                         className="flex-1 bg-transparent text-3xl font-black text-white outline-none placeholder:text-slate-600 focus:text-emerald-400 transition-colors"
+                         placeholder={totalAmountOriginal.toString()}
+                       />
+                       <Calculator size={20} className="text-slate-500"/>
+                     </div>
+                     <p className="text-[10px] text-slate-500 mt-2 italic">* Edit price directly to apply discount</p>
                    </div>
                 ) : (
                    <div>
-                    <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Deposit / Paid (RM) - Optional</label>
+                    <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Deposit / Paid (RM)</label>
                     <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0" />
                   </div>
                 )}
@@ -327,11 +328,9 @@ export default function PointOfSale() {
                 <button onClick={() => processCheckout(selectedMethod || 'DEPOSIT')} className={`w-full font-bold py-3 rounded-xl mt-2 transition-colors text-slate-950 ${transactionMode === 'RESERVE' ? 'bg-yellow-500 hover:bg-yellow-400' : transactionMode === 'DEBT' ? 'bg-rose-500 hover:bg-rose-400' : 'bg-emerald-500 hover:bg-emerald-400'}`}>
                   Confirm {transactionMode === 'RESERVE' ? 'Booking' : transactionMode === 'DEBT' ? 'Hutang' : 'Payment'}
                 </button>
-                
                 <button onClick={() => setTransactionMode('PAY')} className="w-full py-2 text-slate-500 text-sm hover:text-white">Back to Payment</button>
               </div>
             )}
-
             <button onClick={() => setIsPaymentModalOpen(false)} className="w-full py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-800 transition-colors">Cancel</button>
           </div>
         </div>
