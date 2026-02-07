@@ -11,20 +11,18 @@ export default function App() {
   
   const navItems = [
     { path: '/', label: 'POS', icon: ShoppingBag },
-    { path: '/inventory', label: 'Stock', icon: Package },
-    { path: '/accounting', label: 'Ledger', icon: FileText },
+    { path: '/inventory', label: 'Inventory', icon: Package },
+    { path: '/accounting', label: 'Accounting', icon: FileText },
     { path: '/reports', label: 'Reports', icon: PieChart },
   ];
 
   return (
-    // Fixed Height Container to prevent double scrollbars
+    // 👇 FIXED: h-screen + overflow-hidden prevents the page from growing too long
     <div className="h-screen bg-slate-950 text-slate-100 font-sans flex flex-col overflow-hidden">
       
-      {/* --- GLOBAL HEADER (Fixed 80px) --- */}
+      {/* Header */}
       <nav className="h-20 bg-slate-900 border-b border-slate-800 shrink-0 z-50 shadow-2xl relative">
         <div className="h-full max-w-7xl mx-auto px-4 flex items-center justify-between">
-            
-            {/* Brand Logo & Name */}
             <div className="flex items-center gap-3">
               <div className="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
                 <LayoutDashboard size={24} className="text-slate-950"/>
@@ -35,8 +33,6 @@ export default function App() {
                 </h1>
               </div>
             </div>
-            
-            {/* Navigation Tabs */}
             <div className="flex gap-1 bg-slate-950/50 p-1.5 rounded-xl border border-slate-800/50 overflow-x-auto">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -57,11 +53,10 @@ export default function App() {
                 )
               })}
             </div>
-
         </div>
       </nav>
 
-      {/* --- PAGE CONTENT --- */}
+      {/* Page Content */}
       <div className="flex-1 overflow-hidden relative bg-slate-950">
         <Routes>
           <Route path="/" element={<PointOfSale />} />
