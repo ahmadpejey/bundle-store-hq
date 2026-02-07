@@ -42,6 +42,7 @@ export default function Accounting() {
 
   const startEdit = (tx: any) => {
     setEditingId(tx.id);
+    // Initialize form with current values
     setEditForm({ price: tx.price || 0, remarks: tx.remarks || '' });
   };
 
@@ -129,7 +130,7 @@ export default function Accounting() {
       <div className="flex-1 overflow-y-auto p-4 md:p-6 min-h-0 print:p-0 print:overflow-visible">
         <div className="max-w-7xl mx-auto pb-20 print:pb-0">
           
-          {/* --- MOBILE CARD VIEW (New Feature) --- */}
+          {/* --- MOBILE CARD VIEW --- */}
           <div className="md:hidden space-y-3 no-print">
             {filtered.map((tx) => {
               const typeColor = tx.action_type === 'SALE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
@@ -138,9 +139,11 @@ export default function Accounting() {
                                 'bg-slate-800 border-slate-700 text-slate-400';
               const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : tx.action_type === 'DEBT' ? 'HUTANG' : tx.action_type;
 
+              // Edit Mode Logic in Mobile Card
+              const isEditing = editingId === tx.id;
+
               return (
                 <div key={tx.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-                  {/* Top Row: Date & Status */}
                   <div className="flex justify-between items-start mb-2">
                     <div className="text-[10px] text-slate-500 font-mono">
                       {new Date(tx.created_at).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
@@ -150,37 +153,52 @@ export default function Accounting() {
                     </span>
                   </div>
 
-                  {/* Main Content */}
                   <div className="flex justify-between items-center mb-3">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="font-bold text-white text-sm line-clamp-1">{tx.bale_type}</h3>
-                      {tx.remarks && <p className="text-xs text-slate-500 italic mt-0.5">{tx.remarks}</p>}
+                      
+                      {/* EDIT MODE: Remarks Input */}
+                      {isEditing ? (
+                        <input value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} className="block mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" placeholder="Remarks"/>
+                      ) : (
+                        tx.remarks && <p className="text-xs text-slate-500 italic mt-0.5">{tx.remarks}</p>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-black text-white">RM {(tx.price || 0).toFixed(2)}</div>
+                    
+                    <div className="text-right ml-4">
+                      {/* EDIT MODE: Price Input */}
+                      {isEditing ? (
+                         <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right text-white text-sm" />
+                      ) : (
+                         <div className="text-lg font-black text-white">RM {(tx.price || 0).toFixed(2)}</div>
+                      )}
                       <div className="text-[10px] text-slate-500">{tx.qty} Unit(s)</div>
                     </div>
                   </div>
 
-                  {/* Footer Actions */}
                   <div className="flex justify-between items-center pt-3 border-t border-slate-800/50">
                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
                       <User size={12}/> {tx.operator}
                     </div>
                     
                     <div className="flex gap-2">
-                      {/* Settle Button */}
-                      {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && (
-                        <button onClick={() => openSettleModal(tx)} className="bg-yellow-500 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-yellow-400">
-                          <CheckCircle size={14}/> Settle
-                        </button>
-                      )}
-                      {/* Cancel/Edit Buttons */}
-                      <button onClick={() => startEdit(tx)} className="p-1.5 text-blue-400 bg-slate-800 rounded-lg hover:bg-blue-900/20"><Edit size={16}/></button>
-                      {tx.action_type === 'RESERVE' ? (
-                        <button onClick={() => handleDelete(tx.id, 'RESERVE')} className="p-1.5 text-rose-400 bg-slate-800 rounded-lg hover:bg-rose-900/20"><Undo2 size={16}/></button>
+                      {isEditing ? (
+                        <>
+                          <button onClick={saveEdit} className="p-1.5 text-emerald-400 bg-slate-800 rounded-lg hover:bg-emerald-900/20"><Save size={16}/></button>
+                          <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 bg-slate-800 rounded-lg hover:bg-slate-700"><X size={16}/></button>
+                        </>
                       ) : (
-                        <button onClick={() => handleDelete(tx.id, tx.action_type)} className="p-1.5 text-rose-400 bg-slate-800 rounded-lg hover:bg-rose-900/20"><Trash2 size={16}/></button>
+                        <>
+                           {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && (
+                            <button onClick={() => openSettleModal(tx)} className="bg-yellow-500 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-yellow-400"><CheckCircle size={14}/> Settle</button>
+                          )}
+                          <button onClick={() => startEdit(tx)} className="p-1.5 text-blue-400 bg-slate-800 rounded-lg hover:bg-blue-900/20"><Edit size={16}/></button>
+                          {tx.action_type === 'RESERVE' ? (
+                            <button onClick={() => handleDelete(tx.id, 'RESERVE')} className="p-1.5 text-rose-400 bg-slate-800 rounded-lg hover:bg-rose-900/20"><Undo2 size={16}/></button>
+                          ) : (
+                            <button onClick={() => handleDelete(tx.id, tx.action_type)} className="p-1.5 text-rose-400 bg-slate-800 rounded-lg hover:bg-rose-900/20"><Trash2 size={16}/></button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -189,7 +207,7 @@ export default function Accounting() {
             })}
           </div>
 
-          {/* --- DESKTOP TABLE VIEW (Hidden on Mobile) --- */}
+          {/* --- DESKTOP TABLE VIEW --- */}
           <div className="hidden md:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-xl print:bg-white print:border-none print:shadow-none print:block">
             <table className="w-full text-left text-sm whitespace-nowrap print:text-black">
               <thead className="bg-slate-950 text-slate-400 uppercase font-bold text-xs border-b border-slate-800 print:bg-white print:text-black print:border-black">
@@ -211,9 +229,9 @@ export default function Accounting() {
                     <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors print:hover:bg-transparent">
                       <td className="p-4 text-slate-400 font-mono text-xs print:text-black">{new Date(tx.created_at).toLocaleDateString()} <br className="no-print"/><span className="opacity-50 no-print">{new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></td>
                       <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase print:border print:border-black print:text-black ${typeColor}`}>{displayType}</span></td>
-                      <td className="p-4 font-medium text-slate-200 print:text-black">{tx.bale_type}{isEditing ? <input value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} className="block mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs no-print" /> : tx.remarks && <div className="text-xs text-slate-500 italic mt-0.5 print:text-black">{tx.remarks}</div>}</td>
+                      <td className="p-4 font-medium text-slate-200 print:text-black">{tx.bale_type}{isEditing ? <input value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} className="block mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs no-print text-white" /> : tx.remarks && <div className="text-xs text-slate-500 italic mt-0.5 print:text-black">{tx.remarks}</div>}</td>
                       <td className="p-4 text-center font-bold print:text-black">{tx.qty}</td>
-                      <td className="p-4 text-right font-mono print:text-black">{isEditing ? <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right no-print" /> : (tx.price || 0).toFixed(2)}</td>
+                      <td className="p-4 text-right font-mono print:text-black">{isEditing ? <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right no-print text-white" /> : (tx.price || 0).toFixed(2)}</td>
                       <td className={`p-4 text-right font-mono font-bold no-print ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>{tx.action_type === 'SALE' ? ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)).toFixed(2) : '-'}</td>
                       <td className="p-4 text-slate-400 text-xs print:text-black">{tx.operator}</td>
                       <td className="p-4 flex justify-end gap-2 no-print">

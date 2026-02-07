@@ -29,12 +29,9 @@ export default function InventoryManager() {
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
-    // Logic: Kalau dah sort key yang sama, kita terbalikkan (toggle) direction
-    // Special case: Untuk Quantity & Price, biasanya kita nak tengok 'desc' (Banyak/Mahal) dulu
-    if (sortConfig.key === key) {
-      direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
     } else {
-      // Default first click direction based on type
       if (key === 'quantity' || key === 'cost_price' || key === 'sale_price') direction = 'desc';
     }
     setSortConfig({ key, direction });
@@ -124,7 +121,7 @@ export default function InventoryManager() {
           </div>
         </div>
 
-        {/* --- MOBILE SORTING BAR (Baru Ditambah) --- */}
+        {/* --- MOBILE SORTING BAR --- */}
         <div className="flex md:hidden gap-2 px-4 mb-4 overflow-x-auto pb-1 no-scrollbar">
           <button 
             onClick={() => handleSort('quantity')} 
@@ -254,10 +251,13 @@ export default function InventoryManager() {
                   Current Stock
                   <span className="text-slate-500">Unit: Bales</span>
                 </label>
-                <div className="flex items-center gap-4">
-                  <button onClick={() => setForm({...form, qty: Math.max(0, form.qty - 1)})} className="p-3 bg-slate-800 rounded-lg border border-slate-600 text-white hover:bg-slate-700"><Minus size={20}/></button>
-                  <input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className="flex-1 bg-slate-950 border border-emerald-500/50 rounded-lg px-3 py-3 text-center text-2xl font-black text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
-                  <button onClick={() => setForm({...form, qty: form.qty + 1})} className="p-3 bg-emerald-600 rounded-lg text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20"><Plus size={20}/></button>
+                
+                {/* --- FIX: COMPACT LAYOUT FOR MOBILE --- */}
+                <div className="flex items-center justify-center gap-3">
+                  <button onClick={() => setForm({...form, qty: Math.max(0, form.qty - 1)})} className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-600 text-white hover:bg-slate-700"><Minus size={24}/></button>
+                  {/* Fixed width input to prevent overflow */}
+                  <input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className="w-32 bg-slate-950 border border-emerald-500/50 rounded-lg py-3 text-center text-3xl font-black text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                  <button onClick={() => setForm({...form, qty: form.qty + 1})} className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-emerald-600 rounded-lg text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20"><Plus size={24}/></button>
                 </div>
               </div>
 

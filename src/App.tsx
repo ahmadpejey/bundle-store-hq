@@ -32,10 +32,10 @@ export default function App() {
               
               {/* Teks Logo */}
               <div className="leading-none">
-                <h1 className="font-black text-lg md:text-xl tracking-tight text-white block">
+                <h1 className="font-black text-[10] md:text-xl tracking-tight text-white block">
                   STOR BUNDLE<span className="text-emerald-400"></span>
                 </h1>
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em] group-hover:text-emerald-500/70 transition-colors">
+                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.3em] group-hover:text-emerald-500/70 transition-colors">
                   Wira Damai
                 </span>
               </div>
