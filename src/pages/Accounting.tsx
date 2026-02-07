@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from '../api/inventory';
-import { Trash2, Edit, Save, X, Search, FileText, Printer, Calendar, CheckCircle, Banknote, QrCode, Smartphone, Undo2, User, Box } from 'lucide-react';
+import { Trash2, Edit, Save, X, Search, FileText, Printer, Calendar, CheckCircle, Banknote, QrCode, Smartphone, Undo2, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Accounting() {
