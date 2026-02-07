@@ -12,7 +12,9 @@ export default function PointOfSale() {
   
   // Payment States
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [transactionMode, setTransactionMode] = useState<'PAY' | 'RESERVE' | 'DEBT'>('PAY');
+  // Added 'SALE_DETAILS' to handle the name input for normal sales
+  const [transactionMode, setTransactionMode] = useState<'PAY' | 'RESERVE' | 'DEBT' | 'SALE_DETAILS'>('PAY');
+  const [selectedMethod, setSelectedMethod] = useState<string>(''); // Store method (CASH/QR/etc)
   const [clientName, setClientName] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   
@@ -67,35 +69,55 @@ export default function PointOfSale() {
   const handleChargeClick = () => {
     if (cart.length === 0) return toast.error("Cart is empty");
     setTransactionMode('PAY');
+    setSelectedMethod('');
     setClientName('');
     setDepositAmount('');
     setIsPaymentModalOpen(true);
   };
 
+  const handlePaymentMethodSelect = (method: string) => {
+    setSelectedMethod(method);
+    setTransactionMode('SALE_DETAILS'); // Move to name input screen
+  };
+
   const processCheckout = async (paymentMethod: string) => {
-    if ((transactionMode === 'RESERVE' || transactionMode === 'DEBT') && !clientName) return toast.error("Please enter Client Name!");
+    // Validate Name for all modes except simple 'PAY' (which is now bypassed)
+    if (transactionMode !== 'PAY' && !clientName) return toast.error("Please enter Client Name!");
 
     setIsPaymentModalOpen(false);
     
-    // Wording Logic untuk Loading Toast
+    // Wording Logic
     let modeText = 'Processing';
     if (transactionMode === 'RESERVE') modeText = 'Booking';
     if (transactionMode === 'DEBT') modeText = 'Recording Hutang';
+    if (transactionMode === 'SALE_DETAILS') modeText = 'Finalizing Sale';
 
     const loadingToast = toast.loading(`${modeText}...`);
 
     try {
       for (const item of cart) {
-        // Wording Logic untuk Remarks Database
+        // Wording Logic untuk Remarks
         let remarkText = 'POS Checkout';
         if (transactionMode === 'RESERVE') remarkText = `Booking: ${clientName}`;
         if (transactionMode === 'DEBT') remarkText = `Hutang: ${clientName}`;
+        if (transactionMode === 'SALE_DETAILS') remarkText = `Sale: ${clientName}`; // Normal sale with name
+
+        // Determine Action Type
+        // SALE_DETAILS is just a UI state, the DB action is still 'SALE'
+        const dbActionType = (transactionMode === 'SALE_DETAILS' || transactionMode === 'PAY') ? 'SALE' : transactionMode;
+
+        // Determine Price
+        // Normal Sale = Full Price
+        // Reserve/Debt = Deposit Amount (or 0)
+        const dbSalePrice = (transactionMode === 'SALE_DETAILS' || transactionMode === 'PAY') 
+          ? (item.customPrice * item.qty) 
+          : (Number(depositAmount) || 0);
 
         await InventoryAPI.logTransaction({
-          actionType: transactionMode === 'PAY' ? 'SALE' : transactionMode,
+          actionType: dbActionType,
           baleType: item.bale_type,
           qty: item.qty,
-          salePrice: transactionMode === 'PAY' ? (item.customPrice * item.qty) : (Number(depositAmount) || 0),
+          salePrice: dbSalePrice,
           operator: operator,
           remarks: remarkText,
           paymentMethod: paymentMethod
@@ -197,36 +219,37 @@ export default function PointOfSale() {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-6">
             
             <div className="text-center">
-              {/* WORDING FIX: Tunjuk Booking / Hutang dalam Header */}
               <h2 className="text-2xl font-black text-white">
-                {transactionMode === 'PAY' ? 'Select Payment' : transactionMode === 'RESERVE' ? 'Booking Item' : 'Rekod Hutang'}
+                {transactionMode === 'PAY' ? 'Select Payment' : 
+                 transactionMode === 'SALE_DETAILS' ? 'Customer Details' : 
+                 transactionMode === 'RESERVE' ? 'Booking Item' : 'Rekod Hutang'}
               </h2>
               <p className="text-slate-400 text-sm mt-1">
-                {transactionMode === 'PAY' ? 'Finalize sale' : transactionMode === 'RESERVE' ? 'Simpan stok untuk customer' : 'Barang keluar, bayar kemudian'}
+                {transactionMode === 'PAY' ? 'Finalize sale' : 
+                 transactionMode === 'SALE_DETAILS' ? `Confirm ${selectedMethod} Payment` :
+                 transactionMode === 'RESERVE' ? 'Simpan stok untuk customer' : 'Barang keluar, bayar kemudian'}
               </p>
             </div>
 
             {transactionMode === 'PAY' ? (
-              // MODE BAYARAN BIASA
+              // MODE 1: SELECT METHOD
               <div className="grid gap-3">
-                <button onClick={() => processCheckout('CASH')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-emerald-500/50"><div className="bg-emerald-500/10 p-3 rounded-lg text-emerald-400"><Banknote size={24} /></div><span className="font-bold text-lg">Cash</span></button>
-                <button onClick={() => processCheckout('QR_PAY')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-pink-500/50"><div className="bg-pink-500/10 p-3 rounded-lg text-pink-400"><QrCode size={24} /></div><span className="font-bold text-lg">QR Pay</span></button>
-                <button onClick={() => processCheckout('TRANSFER')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-blue-500/50"><div className="bg-blue-500/10 p-3 rounded-lg text-blue-400"><Smartphone size={24} /></div><span className="font-bold text-lg">Transfer</span></button>
+                <button onClick={() => handlePaymentMethodSelect('CASH')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-emerald-500/50"><div className="bg-emerald-500/10 p-3 rounded-lg text-emerald-400"><Banknote size={24} /></div><span className="font-bold text-lg">Cash</span></button>
+                <button onClick={() => handlePaymentMethodSelect('QR_PAY')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-pink-500/50"><div className="bg-pink-500/10 p-3 rounded-lg text-pink-400"><QrCode size={24} /></div><span className="font-bold text-lg">QR Pay</span></button>
+                <button onClick={() => handlePaymentMethodSelect('TRANSFER')} className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-4 rounded-xl border border-slate-700 group hover:border-blue-500/50"><div className="bg-blue-500/10 p-3 rounded-lg text-blue-400"><Smartphone size={24} /></div><span className="font-bold text-lg">Transfer</span></button>
                 
-                {/* PILIHAN SPECIAL - WORDING FIX */}
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   <button onClick={() => setTransactionMode('RESERVE')} className="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:bg-yellow-500/10 hover:border-yellow-500 text-yellow-500 flex flex-col items-center gap-1"><Clock size={20}/><span className="text-xs font-bold">Booking</span></button>
                   <button onClick={() => setTransactionMode('DEBT')} className="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:bg-rose-500/10 hover:border-rose-500 text-rose-500 flex flex-col items-center gap-1"><BookUser size={20}/><span className="text-xs font-bold">Hutang</span></button>
                 </div>
               </div>
             ) : (
-              // MODE RESERVE / HUTANG (FORM)
+              // MODE 2: INPUT FORM (SALE_DETAILS, RESERVE, DEBT)
               <div className="space-y-4">
                 <div className="relative">
-                  <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Client Name</label>
-                  <input autoFocus value={clientName} onChange={handleNameChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Search or type new name..." />
+                  <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Customer</label>
+                  <input autoFocus value={clientName} onChange={handleNameChange} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nama" />
                   
-                  {/* Name Suggestions */}
                   {filteredSuggestions.length > 0 && (
                     <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 max-h-32 overflow-y-auto">
                       {filteredSuggestions.map((name, idx) => (
@@ -235,14 +258,22 @@ export default function PointOfSale() {
                     </div>
                   )}
                 </div>
-                <div>
-                  <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Deposit / Paid (RM) - Optional</label>
-                  <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0" />
-                </div>
+
+                {/* Show Deposit Field ONLY for Reserve/Debt. For Sale, show Total. */}
+                {transactionMode === 'SALE_DETAILS' ? (
+                   <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl text-center">
+                     <p className="text-xs text-emerald-400 uppercase font-bold mb-1">Total to Pay</p>
+                     <p className="text-3xl font-black text-white">RM {totalAmount}</p>
+                   </div>
+                ) : (
+                   <div>
+                    <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Deposit / Paid (RM) - Optional</label>
+                    <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0" />
+                  </div>
+                )}
                 
-                {/* WORDING FIX: Confirm Booking / Confirm Hutang */}
-                <button onClick={() => processCheckout('DEPOSIT')} className={`w-full font-bold py-3 rounded-xl mt-2 transition-colors text-slate-950 ${transactionMode === 'RESERVE' ? 'bg-yellow-500 hover:bg-yellow-400' : 'bg-rose-500 hover:bg-rose-400'}`}>
-                  Confirm {transactionMode === 'RESERVE' ? 'Booking' : 'Hutang'}
+                <button onClick={() => processCheckout(selectedMethod || 'DEPOSIT')} className={`w-full font-bold py-3 rounded-xl mt-2 transition-colors text-slate-950 ${transactionMode === 'RESERVE' ? 'bg-yellow-500 hover:bg-yellow-400' : transactionMode === 'DEBT' ? 'bg-rose-500 hover:bg-rose-400' : 'bg-emerald-500 hover:bg-emerald-400'}`}>
+                  Confirm {transactionMode === 'RESERVE' ? 'Booking' : transactionMode === 'DEBT' ? 'Hutang' : 'Payment'}
                 </button>
                 
                 <button onClick={() => setTransactionMode('PAY')} className="w-full py-2 text-slate-500 text-sm hover:text-white">Back to Payment</button>
