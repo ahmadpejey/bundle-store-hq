@@ -1,6 +1,6 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { LayoutDashboard, ShoppingBag, Package, PieChart, FileText } from 'lucide-react';
+import { Store, ShoppingBag, Package, PieChart, FileText } from 'lucide-react'; // Tukar LayoutDashboard ke Store
 import PointOfSale from './pages/PointOfSale';
 import InventoryManager from './pages/InventoryManager';
 import Reports from './pages/Reports';
@@ -17,22 +17,31 @@ export default function App() {
   ];
 
   return (
-    // 👇 FIXED: h-screen + overflow-hidden prevents the page from growing too long
     <div className="h-screen bg-slate-950 text-slate-100 font-sans flex flex-col overflow-hidden">
       
-      {/* Header */}
-      <nav className="h-20 bg-slate-900 border-b border-slate-800 shrink-0 z-50 shadow-2xl relative">
+      {/* --- GLOBAL HEADER (Fixed 80px) --- */}
+      <nav className="h-20 bg-slate-900/95 backdrop-blur border-b border-slate-800 shrink-0 z-50 shadow-2xl relative">
         <div className="h-full max-w-7xl mx-auto px-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
-                <LayoutDashboard size={24} className="text-slate-950"/>
+            
+            {/* LOGO BARU YANG LEBIH CANTIK */}
+            <div className="flex items-center gap-3 group cursor-default">
+              {/* Ikon dengan Gradient Background */}
+              <div className="bg-gradient-to-br from-emerald-400 to-teal-600 p-2.5 rounded-xl shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 transition-all duration-300 transform group-hover:scale-105">
+                <Store size={26} className="text-white drop-shadow-md" strokeWidth={2.5} />
               </div>
-              <div className="leading-tight">
-                <h1 className="font-black text-lg md:text-xl tracking-tight text-white block leading-none">
-                  STOR BUNDLE<br/><span className="text-emerald-400">WIRA DAMAI</span>
+              
+              {/* Teks Logo */}
+              <div className="leading-none">
+                <h1 className="font-black text-lg md:text-xl tracking-tight text-white block">
+                  STOR BUNDLE<span className="text-emerald-400"></span>
                 </h1>
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em] group-hover:text-emerald-500/70 transition-colors">
+                  Wira Damai
+                </span>
               </div>
             </div>
+            
+            {/* Navigation Tabs */}
             <div className="flex gap-1 bg-slate-950/50 p-1.5 rounded-xl border border-slate-800/50 overflow-x-auto">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -43,20 +52,21 @@ export default function App() {
                     to={item.path} 
                     className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold transition-all whitespace-nowrap ${
                       isActive 
-                        ? 'bg-slate-800 text-emerald-400 shadow-md transform scale-105' 
+                        ? 'bg-slate-800 text-emerald-400 shadow-md transform scale-105 border border-slate-700' 
                         : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
                     }`}
                   >
-                    <Icon size={18} />
+                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                     <span className={isActive ? 'inline' : 'hidden md:inline'}>{item.label}</span>
                   </Link>
                 )
               })}
             </div>
+
         </div>
       </nav>
 
-      {/* Page Content */}
+      {/* --- PAGE CONTENT --- */}
       <div className="flex-1 overflow-hidden relative bg-slate-950">
         <Routes>
           <Route path="/" element={<PointOfSale />} />

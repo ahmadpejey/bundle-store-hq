@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from '../api/inventory';
-import { Trash2, Edit, Plus, Save, X, Search, PackagePlus, ArrowUpDown } from 'lucide-react';
+import { Trash2, Edit, Plus, Save, X, Search, PackagePlus, ArrowUpDown, Boxes, BadgeAlert, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function InventoryManager() {
@@ -21,6 +21,12 @@ export default function InventoryManager() {
       setItems(data);
     } catch (e) { toast.error('Failed to load inventory'); }
   };
+
+  // --- STATISTIK UNTUK BOSS ---
+  const totalBales = items.reduce((acc, item) => acc + (item.quantity || 0), 0);
+  const totalStockValue = items.reduce((acc, item) => acc + ((item.cost_price || 0) * (item.quantity || 0)), 0);
+  const lowStockItems = items.filter(item => item.quantity > 0 && item.quantity < 1).length;
+  // -----------------------------
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -88,27 +94,68 @@ export default function InventoryManager() {
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-100 font-sans relative">
       
-      {/* Header */}
-      <div className="p-4 border-b border-slate-800 bg-slate-900 shadow-sm shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-white">Inventory Manager</h1>
-          <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Manage Stock & Prices</p>
-        </div>
+      {/* Header & Stats */}
+      <div className="bg-slate-900 border-b border-slate-800 shadow-sm shrink-0">
         
-        {/* Mobile View: Flex-col-reverse puts Add Button ABOVE Search */}
-        <div className="flex flex-col-reverse md:flex-row gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-2.5 text-slate-500" size={16} />
-            <input 
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-9 pr-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none text-white placeholder:text-slate-600"
-              placeholder="Search Name, Code, Supplier..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        {/* Title Bar */}
+        <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-white">Inventory Manager</h1>
+            <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Manage Stock & Prices</p>
           </div>
-          <button onClick={openAddModal} className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors">
-            <Plus size={18} /> <span>New Item</span>
-          </button>
+          
+          <div className="flex flex-col-reverse md:flex-row gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="absolute left-3 top-2.5 text-slate-500" size={16} />
+              <input 
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none text-white placeholder:text-slate-600"
+                placeholder="Search Name, Code, Supplier..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <button onClick={openAddModal} className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors">
+              <Plus size={18} /> <span>New Item</span>
+            </button>
+          </div>
+        </div>
+
+        {/* --- DASHBOARD BOSS (Stock Overview) --- */}
+        <div className="grid grid-cols-3 gap-2 px-4 pb-4">
+          
+          {/* Card 1: Total Quantity */}
+          <div className="bg-slate-800/50 border border-slate-700 p-3 rounded-xl flex items-center gap-3">
+            <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400 hidden sm:block">
+              <Boxes size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-slate-500">Total Bales</p>
+              <p className="text-xl font-black text-white">{totalBales}</p>
+            </div>
+          </div>
+
+          {/* Card 2: Total Stock Value (Modal) */}
+          <div className="bg-slate-800/50 border border-slate-700 p-3 rounded-xl flex items-center gap-3">
+            <div className="bg-emerald-500/20 p-2 rounded-lg text-emerald-400 hidden sm:block">
+              <Wallet size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-slate-500">Total Modal</p>
+              <p className="text-xl font-black text-emerald-400">RM {totalStockValue.toLocaleString()}</p>
+            </div>
+          </div>
+
+          {/* Card 3: Low Stock Alert */}
+          <div className="bg-slate-800/50 border border-slate-700 p-3 rounded-xl flex items-center gap-3">
+            <div className="bg-rose-500/20 p-2 rounded-lg text-rose-400 hidden sm:block">
+              <BadgeAlert size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-slate-500">Low Stock</p>
+              <p className={`text-xl font-black ${lowStockItems > 0 ? 'text-rose-400' : 'text-slate-400'}`}>{lowStockItems} <span className="text-xs font-normal text-slate-500">Items</span></p>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -149,7 +196,7 @@ export default function InventoryManager() {
         </div>
       </div>
 
-      {/* MODAL FORM */}
+      {/* MODAL FORM (Sama seperti sebelum ini) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200">
@@ -163,17 +210,17 @@ export default function InventoryManager() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Item Name</label>
-                <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Jenis Bale" />
+                <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="e.g. Vintage Jeans" />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Item Code</label>
-                  <input value={form.code} onChange={e => setForm({...form, code: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Kod Bale" />
+                  <input value={form.code} onChange={e => setForm({...form, code: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. A-01" />
                 </div>
                 <div>
                   <label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Supplier Mark</label>
-                  <input value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Supplier" />
+                  <input value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. JPN-5" />
                 </div>
               </div>
 
