@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from '../api/inventory';
-import { Trash2, Edit, Plus, Save, X, Search, PackagePlus, ArrowUpDown, Boxes, BadgeAlert, Wallet, Terminal, LayoutGrid, Minus } from 'lucide-react';
+import { Trash2, Edit, Plus, Save, X, Search, PackagePlus, Boxes, BadgeAlert, Wallet, Terminal, LayoutGrid, Minus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function InventoryManager() {
@@ -175,7 +175,7 @@ export default function InventoryManager() {
                 <div className="flex items-center justify-center gap-3">
                   <button onClick={() => setForm({...form, qty: Math.max(0, form.qty - 1)})} className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-lg border text-white ${viewMode === 'TERMINAL' ? 'bg-gray-800 border-gray-600' : 'bg-slate-800 border-slate-600'}`}><Minus size={24}/></button>
                   <input type="number" value={form.qty} onChange={e => setForm({...form, qty: Number(e.target.value)})} className={`w-32 rounded-lg py-3 text-center text-3xl font-black text-white focus:ring-2 outline-none border ${viewMode === 'TERMINAL' ? 'bg-black border-gray-600 focus:ring-white' : 'bg-slate-950 border-emerald-500/50 focus:ring-emerald-500'}`} />
-                  <button onClick={() => setForm({...form, qty: form.qty + 1})} className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-lg text-white shadow-lg ${viewMode === 'TERMINAL' ? 'bg-white text-black hover:bg-gray-200' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'}`}><Plus size={24}/></button>
+                  <button onClick={() => setForm({...form, qty: form.qty + 1})} className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-lg text-gray-600 shadow-lg ${viewMode === 'TERMINAL' ? 'bg-white text-gray-600 hover:bg-gray-200' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'}`}><Plus size={24}/></button>
                 </div>
               </div>
               <div><label className="text-xs uppercase font-bold text-gray-500 mb-1 block">Item Name</label><input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={`w-full rounded-lg px-3 py-3 text-white outline-none border ${viewMode === 'TERMINAL' ? 'bg-gray-900 border-gray-700 focus:border-white' : 'bg-slate-950 border-slate-700 focus:ring-2 focus:ring-blue-500'}`} placeholder="e.g. Vintage Jeans" /></div>
