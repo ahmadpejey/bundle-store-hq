@@ -2,43 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-}
+:root { font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif; }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #020617; /* Dark Slate 950 */
+  background-color: #020617; 
 }
 
-/* --- PRINT STYLES (THE FIX) --- */
 @media print {
-  /* 1. Hide EVERYTHING by default */
-  body * {
-    visibility: hidden;
+  body, #root, #print-root {
+    background-color: white !important;
+    color: black !important;
   }
-
-  /* 2. Unhide ONLY the print container and its children */
-  #print-root, #print-root * {
-    visibility: visible;
-  }
-
-  /* 3. Position the print container at the absolute top-left */
-  #print-root {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    background: white;
-  }
-
-  /* 4. Reset Page Margins to avoid headers/footers */
-  @page {
-    size: auto;
-    margin: 0mm;
-  }
+  body * { visibility: hidden; }
+  #print-root, #print-root * { visibility: visible; }
+  #print-root { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+  @page { size: auto; margin: 0mm; }
 }

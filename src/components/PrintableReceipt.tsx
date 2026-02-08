@@ -14,17 +14,15 @@ interface ReceiptProps {
 export const PrintableReceipt = forwardRef<HTMLDivElement, ReceiptProps>((props, ref) => {
   const { receiptNo, date, cashier, items, total, paymentMethod, customerName, type } = props;
 
-  // Optimized styles for Thermal Printer
-  // Uses 58mm width content centered in 80mm container for safety
   const containerClass = type === 'THERMAL' 
-    ? "w-[80mm] p-4 font-mono text-[10px] leading-tight text-black bg-white mx-auto" 
-    : "w-[210mm] min-h-[297mm] p-12 font-sans text-sm text-black bg-white mx-auto";
+    ? "w-[80mm] p-4 font-mono text-[10px] leading-tight text-black bg-white mx-auto print:text-black print:bg-white" 
+    : "w-[210mm] min-h-[297mm] p-12 font-sans text-sm text-black bg-white mx-auto print:text-black print:bg-white";
 
   return (
     <div className="hidden print:block absolute top-0 left-0 z-[9999] bg-white w-full h-full">
       <div ref={ref} className={containerClass}>
         
-        {/* --- HEADER --- */}
+        {/* HEADER */}
         <div className="text-center mb-3">
           <h1 className="font-bold text-sm mb-1 uppercase tracking-wider">STOR BUNDLE WIRA DAMAI</h1>
           <p>Lorong Berlian 9, Kg Melayu Wira Damai</p>
@@ -34,22 +32,21 @@ export const PrintableReceipt = forwardRef<HTMLDivElement, ReceiptProps>((props,
 
         <div className="border-b border-black border-dashed my-2"></div>
 
-        {/* --- META INFO --- */}
+        {/* META INFO */}
         <div className="flex justify-between mb-1">
-          <span>Date: {new Date(date).toLocaleDateString()}</span>
-          <span>Time: {new Date(date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+          <span>{new Date(date).toLocaleDateString()} {new Date(date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
         </div>
         <div className="flex justify-between mb-1">
-          <span>No: {receiptNo}</span>
+          <span>ID: {receiptNo}</span>
           <span>Staff: {cashier}</span>
         </div>
         {customerName && (
-           <div className="mb-1 font-bold uppercase">Cust: {customerName}</div>
+           <div className="mb-1 font-bold uppercase border border-black p-1 text-center mt-2">{customerName}</div>
         )}
 
         <div className="border-b border-black border-dashed my-2"></div>
 
-        {/* --- ITEMS TABLE --- */}
+        {/* ITEMS */}
         <table className="w-full text-left mb-2">
           <thead>
             <tr>
@@ -71,23 +68,22 @@ export const PrintableReceipt = forwardRef<HTMLDivElement, ReceiptProps>((props,
 
         <div className="border-b border-black border-dashed my-2"></div>
 
-        {/* --- TOTAL --- */}
+        {/* TOTAL */}
         <div className="flex justify-between items-center text-sm font-bold mb-1">
           <span>TOTAL</span>
           <span>RM {total.toFixed(2)}</span>
         </div>
         <div className="flex justify-between items-center text-[10px]">
-          <span>Payment:</span>
+          <span>Pay Via:</span>
           <span className="uppercase">{paymentMethod}</span>
         </div>
 
         <div className="border-b border-black border-dashed my-4"></div>
 
-        {/* --- FOOTER --- */}
+        {/* FOOTER */}
         <div className="text-center">
           <p className="font-bold mb-1">TERIMA KASIH!</p>
           <p>Barang yang dijual tidak boleh dikembalikan.</p>
-          <p className="mt-4 text-[6px] text-gray-500 tracking-[0.3em]">System by szalted</p>
         </div>
       </div>
     </div>

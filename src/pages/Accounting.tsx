@@ -24,10 +24,7 @@ export default function Accounting() {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
-    try {
-      const data = await InventoryAPI.getTransactions();
-      setTransactions(data || []);
-    } catch (e) { toast.error('Failed to load records'); }
+    try { const data = await InventoryAPI.getTransactions(); setTransactions(data || []); } catch (e) { toast.error('Failed to load records'); }
   };
 
   const handleDelete = async (id: number, type: string) => {
@@ -57,7 +54,6 @@ export default function Accounting() {
             customerName: tx.remarks?.replace('Sale: ', '').replace('Booking: ', '').replace('Hutang: ', ''),
             type: 'THERMAL'
         });
-
         setTimeout(() => { window.print(); }, 100);
     } catch(e) { toast.error("Failed to generate receipt"); }
   };
@@ -71,21 +67,73 @@ export default function Accounting() {
     return matchSearch && matchDate && matchType && matchCashier;
   });
 
+  const handlePrintReport = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return toast.error("Pop-up blocked");
+    
+    const totalSales = filtered.reduce((acc, tx) => acc + (tx.action_type === 'SALE' ? (tx.price || 0) : 0), 0);
+    
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Sales Report</title>
+          <style>
+            body { font-family: sans-serif; padding: 20px; }
+            h1 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .total { text-align: right; margin-top: 20px; font-weight: bold; font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <h1>Sales Report</h1>
+          <p>Date Range: ${dateFrom || 'All'} to ${dateTo || 'All'}</p>
+          <table>
+            <thead><tr><th>Date</th><th>Type</th><th>Item</th><th>Qty</th><th>Price</th><th>Customer</th><th>Cashier</th></tr></thead>
+            <tbody>
+              ${filtered.map(tx => {
+                let customer = '-';
+                if(tx.remarks) {
+                   const r = tx.remarks;
+                   if(r.startsWith('Sale: ')) customer = r.replace('Sale: ', '');
+                   else if(r.startsWith('Booking: ')) customer = r.replace('Booking: ', '');
+                   else if(r.startsWith('Hutang: ')) customer = r.replace('Hutang: ', '');
+                   else if(r.startsWith('Delivery: ')) customer = r.replace('Delivery: ', '').split(',')[0];
+                }
+                return `
+                <tr>
+                  <td>${new Date(tx.created_at).toLocaleDateString()} ${new Date(tx.created_at).toLocaleTimeString()}</td>
+                  <td>${tx.action_type}</td>
+                  <td>${tx.bale_type}</td>
+                  <td>${tx.qty}</td>
+                  <td>RM${(tx.price || 0).toFixed(2)}</td>
+                  <td>${customer}</td>
+                  <td>${tx.operator}</td>
+                </tr>
+              `}).join('')}
+            </tbody>
+          </table>
+          <div class="total">Total Sales: RM${totalSales.toFixed(2)}</div>
+          <script>window.print();</script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   const totalSale = filtered.reduce((acc, tx) => acc + (tx.action_type === 'SALE' ? (tx.price || 0) : 0), 0);
   const totalProfit = filtered.reduce((acc, tx) => acc + (tx.action_type === 'SALE' ? ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)) : 0), 0);
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-100 font-sans relative overflow-hidden">
-      
-      {/* Hidden Receipt Area */}
-      <div id="print-root">
-        {receiptData && <PrintableReceipt {...receiptData} />}
-      </div>
+      <div id="print-root">{receiptData && <PrintableReceipt {...receiptData} />}</div>
 
-      {/* Header */}
       <div className="p-4 border-b border-slate-800 bg-slate-900 shrink-0 flex flex-col gap-4 no-print z-10">
         <div className="flex justify-between items-center">
           <div><h1 className="text-xl font-bold text-white flex items-center gap-2"><FileText className="text-blue-400" size={20} /> Accounting Ledger</h1><p className="text-xs text-slate-500 uppercase font-bold">Financial Records</p></div>
+          <button onClick={handlePrintReport} className="bg-white text-slate-950 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-gray-200"><Printer size={16}/> Print Report</button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             <div className="relative"><Calendar className="absolute left-3 top-2.5 text-slate-500" size={14} /><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-2 text-xs text-white" /></div>
@@ -96,51 +144,29 @@ export default function Accounting() {
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-4 bg-slate-950 no-scrollbar">
         <div className="max-w-7xl mx-auto pb-20">
-          
           {/* MOBILE CARD VIEW */}
           <div className="md:hidden space-y-3">
             {filtered.length === 0 ? <p className="text-center text-slate-500 py-10">No records found.</p> : null}
             {filtered.map((tx) => {
-              const typeColor = tx.action_type === 'SALE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                                tx.action_type === 'RESERVE' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                                tx.action_type === 'DEBT' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
-                                'bg-slate-800 border-slate-700 text-slate-400';
+              const typeColor = tx.action_type === 'SALE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : tx.action_type === 'RESERVE' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : tx.action_type === 'DEBT' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-slate-800 border-slate-700 text-slate-400';
               const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : tx.action_type === 'DEBT' ? 'HUTANG' : tx.action_type;
               const isEditing = editingId === tx.id;
-
               return (
                 <div key={tx.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
                   <div className="flex justify-between items-start mb-2">
-                    <div className="text-[10px] text-slate-500 font-mono">
-                      {new Date(tx.created_at).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                    </div>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${typeColor}`}>
-                      {displayType}
-                    </span>
+                    <div className="text-[10px] text-slate-500 font-mono">{new Date(tx.created_at).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${typeColor}`}>{displayType}</span>
                   </div>
-
                   <div className="flex justify-between items-center mb-3">
-                    <div className="flex-1 min-w-0 pr-2">
-                      <h3 className="font-bold text-white text-sm line-clamp-1">{tx.bale_type}</h3>
-                      {isEditing ? <input value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} className="block mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" placeholder="Remarks"/> : tx.remarks && <p className="text-xs text-slate-500 italic mt-0.5 truncate">{tx.remarks}</p>}
-                    </div>
-                    <div className="text-right shrink-0">
-                      {isEditing ? <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right text-white text-sm" /> : <div className="text-lg font-black text-white">RM {(tx.price || 0).toFixed(2)}</div>}
-                      <div className="text-[10px] text-slate-500">{tx.qty} Unit(s)</div>
-                    </div>
+                    <div className="flex-1 min-w-0 pr-2"><h3 className="font-bold text-white text-sm line-clamp-1">{tx.bale_type}</h3>{isEditing ? <input value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} className="block mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" placeholder="Remarks"/> : tx.remarks && <p className="text-xs text-slate-500 italic mt-0.5 truncate">{tx.remarks}</p>}</div>
+                    <div className="text-right shrink-0">{isEditing ? <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right text-white text-sm" /> : <div className="text-lg font-black text-white">RM {(tx.price || 0).toFixed(2)}</div>}<div className="text-[10px] text-slate-500">{tx.qty} Unit(s)</div></div>
                   </div>
-
                   <div className="flex justify-between items-center pt-3 border-t border-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <User size={12}/> {tx.operator}
-                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500"><User size={12}/> {tx.operator}</div>
                     <div className="flex gap-2">
-                      {isEditing ? (
-                        <><button onClick={saveEdit} className="p-1.5 text-emerald-400 bg-slate-800 rounded-lg"><Save size={16}/></button><button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 bg-slate-800 rounded-lg"><X size={16}/></button></>
-                      ) : (
+                      {isEditing ? ( <><button onClick={saveEdit} className="p-1.5 text-emerald-400 bg-slate-800 rounded-lg"><Save size={16}/></button><button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 bg-slate-800 rounded-lg"><X size={16}/></button></> ) : (
                         <>
                            {tx.action_type === 'SALE' && tx.receipt_no && <button onClick={() => handleReprint(tx)} className="p-1.5 text-slate-400 bg-slate-800 rounded-lg"><Printer size={16}/></button>}
                            {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && <button onClick={() => openSettleModal(tx)} className="bg-yellow-500 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-yellow-400"><CheckCircle size={14}/> Settle</button>}
@@ -178,9 +204,7 @@ export default function Accounting() {
                       <td className={`p-4 text-right font-mono font-bold ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>{tx.action_type === 'SALE' ? ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)).toFixed(2) : '-'}</td>
                       <td className="p-4 text-slate-400 text-xs">{tx.operator}</td>
                       <td className="p-4 flex justify-end gap-2">
-                        {isEditing ? (
-                          <><button onClick={saveEdit} className="p-1.5 text-emerald-400 bg-emerald-400/10 rounded"><Save size={16}/></button><button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 bg-slate-800 rounded"><X size={16}/></button></>
-                        ) : (
+                        {isEditing ? ( <><button onClick={saveEdit} className="p-1.5 text-emerald-400 bg-emerald-400/10 rounded"><Save size={16}/></button><button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 bg-slate-800 rounded"><X size={16}/></button></> ) : (
                           <>
                              {tx.action_type === 'SALE' && tx.receipt_no && <button onClick={() => handleReprint(tx)} className="p-1.5 text-slate-400 bg-slate-800 rounded hover:bg-slate-700"><Printer size={16}/></button>}
                              {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && <button onClick={() => openSettleModal(tx)} className="p-1.5 text-yellow-400 bg-yellow-400/10 rounded hover:bg-yellow-400/20"><CheckCircle size={16}/></button>}
