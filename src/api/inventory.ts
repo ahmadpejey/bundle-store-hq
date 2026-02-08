@@ -8,13 +8,14 @@ const generateNextReceiptID = async () => {
   const prefix = `SFB-${month}${year}-`;
 
   // Fetch the last transaction that matches the current month's prefix
-  const { data, error } = await supabase
+  // Changed .single() to .maybeSingle() to handle "no rows" gracefully without returning an error object
+  const { data } = await supabase
     .from('transactions')
     .select('receipt_no')
     .ilike('receipt_no', `${prefix}%`)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   let nextSequence = 1;
 
