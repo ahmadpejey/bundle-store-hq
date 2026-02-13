@@ -177,7 +177,7 @@ export default function PointOfSale() {
 
       {/* 2. Cart Container */}
       <div className={cn(
-        "fixed inset-0 z-50 bg-white flex flex-col transition-transform duration-300 ease-out md:relative md:inset-auto md:w-[400px] md:translate-y-0 md:rounded-2xl md:bg-white md:border md:shadow-sm md:h-full md:flex md:flex-col",
+        "fixed inset-0 z-50 bg-white flex flex-col transition-transform duration-300 ease-out md:relative md:inset-auto md:w-[400px] md:translate-y-0 md:rounded-2xl md:bg-white md:border md:shadow-sm md:h-full md:flex md:flex-col pb-16 md:pb-0",
         showCartMobile ? "translate-y-0" : "translate-y-full md:translate-y-0"
       )}>
         <div className="p-4 border-b flex justify-between items-center bg-slate-50 md:rounded-t-2xl">
