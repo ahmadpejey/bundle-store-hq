@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from '../api/inventory';
-import { Trash2, Edit, Plus, Save, Search, Package, ArrowUpDown } from 'lucide-react';
+import { Trash2, Edit, Plus, Search, Package, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';

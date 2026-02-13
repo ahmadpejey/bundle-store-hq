@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from '../api/inventory';
 import { PrintableReceipt } from '../components/PrintableReceipt';
-import { Trash2, Edit, Save, X, Search, FileText, Calendar, CheckCircle, Banknote, QrCode, Smartphone, Undo2, User, Printer, Filter, DollarSign, TrendingUp } from 'lucide-react';
+import { Trash2, Edit, Save, X, Search, FileText, Banknote, QrCode, Smartphone, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { cn } from '../lib/utils';
@@ -200,7 +200,6 @@ export default function Accounting() {
           ) : (
             <div className="divide-y">
               {filtered.map((tx) => {
-                const isProfit = ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)) > 0;
                 const isEditing = editingId === tx.id;
                 const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : tx.action_type === 'DEBT' ? 'HUTANG' : tx.action_type;
                 const typeColor = tx.action_type === 'SALE' ? 'bg-emerald-100 text-emerald-700' : tx.action_type === 'RESERVE' ? 'bg-yellow-100 text-yellow-700' : tx.action_type === 'DEBT' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600';

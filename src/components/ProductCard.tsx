@@ -1,7 +1,5 @@
-import { Package } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Badge } from "./ui/badge";
-import { Card } from "./ui/card";
 
 interface ProductCardProps {
     item: any;

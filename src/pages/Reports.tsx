@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from '../api/inventory';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, DollarSign, Calendar, BarChart3, PieChart } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { TrendingUp, DollarSign, Calendar, BarChart3 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import { cn } from '../lib/utils';
 import { toast } from 'sonner';
 
 export default function Reports() {
