@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
 import { InventoryAPI } from '../api/inventory';
 import { PrintableReceipt } from '../components/PrintableReceipt';
-import { Trash2, Edit, Save, X, Search, FileText, Calendar, CheckCircle, Banknote, QrCode, Smartphone, Undo2, User, Printer } from 'lucide-react';
+import { Trash2, Edit, Save, X, Search, FileText, Calendar, CheckCircle, Banknote, QrCode, Smartphone, Undo2, User, Printer, Filter, DollarSign, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { cn } from '../lib/utils';
 
 export default function Accounting() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-  
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ price: 0, remarks: '' });
 
@@ -41,21 +47,21 @@ export default function Accounting() {
   const handleReprint = async (tx: any) => {
     if (!tx.receipt_no) return toast.error("No Receipt ID found.");
     try {
-        const relatedItems = transactions.filter(t => t.receipt_no === tx.receipt_no);
-        const total = relatedItems.reduce((acc, item) => acc + (item.price || 0), 0);
-        
-        setReceiptData({
-            receiptNo: tx.receipt_no,
-            date: tx.created_at,
-            cashier: tx.operator,
-            items: relatedItems.map(i => ({ bale_type: i.bale_type, qty: i.qty, price: i.price })),
-            total: total,
-            paymentMethod: tx.payment_method || 'CASH',
-            customerName: tx.remarks?.replace('Sale: ', '').replace('Booking: ', '').replace('Hutang: ', ''),
-            type: 'THERMAL'
-        });
-        setTimeout(() => { window.print(); }, 100);
-    } catch(e) { toast.error("Failed to generate receipt"); }
+      const relatedItems = transactions.filter(t => t.receipt_no === tx.receipt_no);
+      const total = relatedItems.reduce((acc, item) => acc + (item.price || 0), 0);
+
+      setReceiptData({
+        receiptNo: tx.receipt_no,
+        date: tx.created_at,
+        cashier: tx.operator,
+        items: relatedItems.map(i => ({ bale_type: i.bale_type, qty: i.qty, price: i.price })),
+        total: total,
+        paymentMethod: tx.payment_method || 'CASH',
+        customerName: tx.remarks?.replace('Sale: ', '').replace('Booking: ', '').replace('Hutang: ', ''),
+        type: 'THERMAL'
+      });
+      setTimeout(() => { window.print(); }, 100);
+    } catch (e) { toast.error("Failed to generate receipt"); }
   };
 
   const filtered = transactions.filter(tx => {
@@ -70,9 +76,10 @@ export default function Accounting() {
   const handlePrintReport = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return toast.error("Pop-up blocked");
-    
+
     const totalSales = filtered.reduce((acc, tx) => acc + (tx.action_type === 'SALE' ? (tx.price || 0) : 0), 0);
-    
+
+    // ... (Keep existing report logic or improve styling if needed, keeping it simple for now)
     const htmlContent = `
       <html>
         <head>
@@ -93,15 +100,15 @@ export default function Accounting() {
             <thead><tr><th>Date</th><th>Type</th><th>Item</th><th>Qty</th><th>Price</th><th>Customer</th><th>Cashier</th></tr></thead>
             <tbody>
               ${filtered.map(tx => {
-                let customer = '-';
-                if(tx.remarks) {
-                   const r = tx.remarks;
-                   if(r.startsWith('Sale: ')) customer = r.replace('Sale: ', '');
-                   else if(r.startsWith('Booking: ')) customer = r.replace('Booking: ', '');
-                   else if(r.startsWith('Hutang: ')) customer = r.replace('Hutang: ', '');
-                   else if(r.startsWith('Delivery: ')) customer = r.replace('Delivery: ', '').split(',')[0];
-                }
-                return `
+      let customer = '-';
+      if (tx.remarks) {
+        const r = tx.remarks;
+        if (r.startsWith('Sale: ')) customer = r.replace('Sale: ', '');
+        else if (r.startsWith('Booking: ')) customer = r.replace('Booking: ', '');
+        else if (r.startsWith('Hutang: ')) customer = r.replace('Hutang: ', '');
+        else if (r.startsWith('Delivery: ')) customer = r.replace('Delivery: ', '').split(',')[0];
+      }
+      return `
                 <tr>
                   <td>${new Date(tx.created_at).toLocaleDateString()} ${new Date(tx.created_at).toLocaleTimeString()}</td>
                   <td>${tx.action_type}</td>
@@ -127,118 +134,175 @@ export default function Accounting() {
   const totalProfit = filtered.reduce((acc, tx) => acc + (tx.action_type === 'SALE' ? ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)) : 0), 0);
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 text-slate-100 font-sans relative overflow-hidden">
+    <div className="flex flex-col h-full space-y-4">
       <div id="print-root">{receiptData && <PrintableReceipt {...receiptData} />}</div>
 
-      <div className="p-4 border-b border-slate-800 bg-slate-900 shrink-0 flex flex-col gap-4 no-print z-10">
-        <div className="flex justify-between items-center">
-          <div><h1 className="text-xl font-bold text-white flex items-center gap-2"><FileText className="text-blue-400" size={20} /> Accounting Ledger</h1><p className="text-xs text-slate-500 uppercase font-bold">Financial Records</p></div>
-          <button onClick={handlePrintReport} className="bg-white text-slate-950 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-gray-200"><Printer size={16}/> Print Report</button>
+      {/* HEADER & STATS */}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between no-print">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">LEDGER</h1>
+          <p className="text-slate-500 text-sm font-medium">Financial records & transactions</p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div className="relative"><Calendar className="absolute left-3 top-2.5 text-slate-500" size={14} /><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-2 text-xs text-white" /></div>
-            <div className="relative"><Calendar className="absolute left-3 top-2.5 text-slate-500" size={14} /><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-2 text-xs text-white" /></div>
-            <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white"><option value="ALL">All Types</option><option value="SALE">Sale</option><option value="DEBT">Hutang</option><option value="RESERVE">Booking</option><option value="IN">Stock In</option><option value="OUT">Stock Out</option></select>
-            <select value={filterCashier} onChange={e => setFilterCashier(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white"><option value="ALL">All Cashiers</option>{['SAIFUL', 'MADAN', 'SAMSUL'].map(c => <option key={c} value={c}>{c}</option>)}</select>
-            <div className="relative"><Search className="absolute left-3 top-2.5 text-slate-500" size={14} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-9 pr-2 text-xs text-white" /></div>
+        <div className="flex gap-2 w-full md:w-auto">
+          <Card className="p-3 flex-1 md:w-40 bg-slate-900 text-white border-none shadow-lg">
+            <div className="text-[10px] font-bold uppercase text-slate-400">Total Revenue</div>
+            <div className="text-lg font-black break-words">RM {totalSale.toLocaleString()}</div>
+          </Card>
+          <Card className="p-3 flex-1 md:w-40 bg-white border-slate-200 shadow-sm">
+            <div className="text-[10px] font-bold uppercase text-emerald-600">Net Profit</div>
+            <div className="text-lg font-black text-slate-900 break-words">RM {totalProfit.toLocaleString()}</div>
+          </Card>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 bg-slate-950 no-scrollbar">
-        <div className="max-w-7xl mx-auto pb-20">
-          {/* MOBILE CARD VIEW */}
-          <div className="md:hidden space-y-3">
-            {filtered.length === 0 ? <p className="text-center text-slate-500 py-10">No records found.</p> : null}
-            {filtered.map((tx) => {
-              const typeColor = tx.action_type === 'SALE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : tx.action_type === 'RESERVE' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : tx.action_type === 'DEBT' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-slate-800 border-slate-700 text-slate-400';
-              const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : tx.action_type === 'DEBT' ? 'HUTANG' : tx.action_type;
-              const isEditing = editingId === tx.id;
-              return (
-                <div key={tx.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm relative overflow-hidden">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="text-[10px] text-slate-500 font-mono">{new Date(tx.created_at).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${typeColor}`}>{displayType}</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="flex-1 min-w-0 pr-2"><h3 className="font-bold text-white text-sm line-clamp-1">{tx.bale_type}</h3>{isEditing ? <input value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} className="block mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" placeholder="Remarks"/> : tx.remarks && <p className="text-xs text-slate-500 italic mt-0.5 truncate">{tx.remarks}</p>}</div>
-                    <div className="text-right shrink-0">{isEditing ? <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right text-white text-sm" /> : <div className="text-lg font-black text-white">RM {(tx.price || 0).toFixed(2)}</div>}<div className="text-[10px] text-slate-500">{tx.qty} Unit(s)</div></div>
-                  </div>
-                  <div className="flex justify-between items-center pt-3 border-t border-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500"><User size={12}/> {tx.operator}</div>
-                    <div className="flex gap-2">
-                      {isEditing ? ( <><button onClick={saveEdit} className="p-1.5 text-emerald-400 bg-slate-800 rounded-lg"><Save size={16}/></button><button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 bg-slate-800 rounded-lg"><X size={16}/></button></> ) : (
-                        <>
-                           {tx.action_type === 'SALE' && tx.receipt_no && <button onClick={() => handleReprint(tx)} className="p-1.5 text-slate-400 bg-slate-800 rounded-lg"><Printer size={16}/></button>}
-                           {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && <button onClick={() => openSettleModal(tx)} className="bg-yellow-500 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-yellow-400"><CheckCircle size={14}/> Settle</button>}
-                          <button onClick={() => startEdit(tx)} className="p-1.5 text-blue-400 bg-slate-800 rounded-lg"><Edit size={16}/></button>
-                          {tx.action_type === 'RESERVE' ? <button onClick={() => handleDelete(tx.id, 'RESERVE')} className="p-1.5 text-rose-400 bg-slate-800 rounded-lg"><Undo2 size={16}/></button> : <button onClick={() => handleDelete(tx.id, tx.action_type)} className="p-1.5 text-rose-400 bg-slate-800 rounded-lg"><Trash2 size={16}/></button>}
-                        </>
+      {/* TOOLBAR */}
+      <div className="flex flex-col gap-3 bg-white p-3 rounded-xl border shadow-sm no-print">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search transactions..."
+              className="pl-10 bg-slate-50 border-slate-200"
+            />
+          </div>
+          <Button onClick={handlePrintReport} variant="outline" className="shrink-0 gap-2">
+            <Printer size={16} /> Print Report
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="bg-slate-50 border-slate-200 text-xs" />
+          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="bg-slate-50 border-slate-200 text-xs" />
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"><option value="ALL">All Types</option><option value="SALE">Sale</option><option value="DEBT">Hutang</option><option value="RESERVE">Booking</option><option value="IN">Stock In</option><option value="OUT">Stock Out</option></select>
+          <select value={filterCashier} onChange={e => setFilterCashier(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"><option value="ALL">All Cashiers</option>{['SAIFUL', 'MADAN', 'SAMSUL'].map(c => <option key={c} value={c}>{c}</option>)}</select>
+        </div>
+      </div>
+
+      {/* LIST / TABLE */}
+      <div className="flex-1 overflow-hidden bg-white border rounded-xl shadow-sm flex flex-col no-print">
+        <div className="hidden md:grid grid-cols-12 gap-4 p-4 bg-slate-50 border-b text-xs font-black uppercase text-slate-500 select-none">
+          <div className="col-span-2">Date</div>
+          <div className="col-span-1">Type</div>
+          <div className="col-span-3">Item / Remarks</div>
+          <div className="col-span-1 text-center">Qty</div>
+          <div className="col-span-2 text-right">Amount</div>
+          <div className="col-span-1 text-right">Profit</div>
+          <div className="col-span-2 text-right">Action</div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <FileText size={48} className="opacity-20 mb-4" />
+              <p>No transactions found</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {filtered.map((tx) => {
+                const isProfit = ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)) > 0;
+                const isEditing = editingId === tx.id;
+                const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : tx.action_type === 'DEBT' ? 'HUTANG' : tx.action_type;
+                const typeColor = tx.action_type === 'SALE' ? 'bg-emerald-100 text-emerald-700' : tx.action_type === 'RESERVE' ? 'bg-yellow-100 text-yellow-700' : tx.action_type === 'DEBT' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600';
+
+                return (
+                  <div key={tx.id} className="group hover:bg-slate-50 transition-colors">
+                    {/* DESKTOP ROW */}
+                    <div className="hidden md:grid grid-cols-12 gap-4 p-4 items-center text-sm">
+                      <div className="col-span-2 text-slate-500 text-xs">
+                        <div className="font-bold text-slate-700">{new Date(tx.created_at).toLocaleDateString()}</div>
+                        <div>{new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                      <div className="col-span-1"><Badge variant="outline" className={cn("border-none", typeColor)}>{displayType}</Badge></div>
+                      <div className="col-span-3">
+                        <div className="font-bold text-slate-900">{tx.bale_type}</div>
+                        {isEditing ? <Input value={editForm.remarks} onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })} className="h-7 text-xs mt-1" /> : tx.remarks && <div className="text-xs text-slate-500 italic mt-0.5 truncate">{tx.remarks}</div>}
+                      </div>
+                      <div className="col-span-1 text-center font-mono font-bold">{tx.qty}</div>
+                      <div className="col-span-2 text-right font-mono">
+                        {isEditing ? <Input type="number" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })} className="h-7 text-right" /> : (tx.price || 0).toFixed(2)}
+                      </div>
+                      <div className="col-span-1 text-right font-mono font-bold text-emerald-600">{tx.action_type === 'SALE' ? ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)).toFixed(2) : '-'}</div>
+                      <div className="col-span-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {isEditing ? (
+                          <><Button size="icon" variant="ghost" onClick={saveEdit} className="h-8 w-8 text-emerald-600"><Save size={14} /></Button><Button size="icon" variant="ghost" onClick={() => setEditingId(null)} className="h-8 w-8 text-slate-400"><X size={14} /></Button></>
+                        ) : (
+                          <>
+                            {tx.action_type === 'SALE' && tx.receipt_no && <Button size="icon" variant="ghost" onClick={() => handleReprint(tx)} className="h-8 w-8 text-slate-400 hover:text-slate-900"><Printer size={14} /></Button>}
+                            {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && <Button size="sm" variant="default" onClick={() => openSettleModal(tx)} className="h-8 px-2 text-[10px] bg-yellow-500 hover:bg-yellow-600 text-white">SETTLE</Button>}
+                            <Button size="icon" variant="ghost" onClick={() => startEdit(tx)} className="h-8 w-8 text-blue-400 hover:text-blue-600"><Edit size={14} /></Button>
+                            <Button size="icon" variant="ghost" onClick={() => handleDelete(tx.id, tx.action_type)} className="h-8 w-8 text-rose-400 hover:text-rose-600"><Trash2 size={14} /></Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* MOBILE ROW */}
+                    <div className="md:hidden p-4 flex flex-col gap-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className={cn("border-none px-1.5 py-0 h-5 text-[10px]", typeColor)}>{displayType}</Badge>
+                            <span className="text-[10px] text-slate-400">{new Date(tx.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <div className="font-bold text-slate-900">{tx.bale_type}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-black text-lg">RM {(tx.price || 0).toFixed(2)}</div>
+                          <div className="text-[10px] text-slate-500">{tx.qty} Units</div>
+                        </div>
+                      </div>
+                      {isEditing ? (
+                        <div className="grid gap-2 bg-slate-50 p-2 rounded-lg">
+                          <Input value={editForm.remarks} onChange={e => setEditForm({ ...editForm, remarks: e.target.value })} placeholder="Remarks" className="h-8 text-xs bg-white" />
+                          <Input type="number" value={editForm.price} onChange={e => setEditForm({ ...editForm, price: Number(e.target.value) })} placeholder="Price" className="h-8 text-xs bg-white" />
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="h-7 text-xs">Cancel</Button>
+                            <Button size="sm" onClick={saveEdit} className="h-7 text-xs bg-emerald-600 text-white">Save</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                          <div className="text-xs text-slate-500 italic truncate max-w-[150px]">{tx.remarks}</div>
+                          <div className="flex gap-1">
+                            {tx.action_type === 'SALE' && tx.receipt_no && <Button size="icon" variant="ghost" onClick={() => handleReprint(tx)} className="h-7 w-7 text-slate-400"><Printer size={14} /></Button>}
+                            {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && <Button size="sm" onClick={() => openSettleModal(tx)} className="h-7 px-2 text-[10px] bg-yellow-500 text-white">SETTLE</Button>}
+                            <Button size="icon" variant="ghost" onClick={() => startEdit(tx)} className="h-7 w-7 text-blue-400"><Edit size={14} /></Button>
+                            <Button size="icon" variant="ghost" onClick={() => handleDelete(tx.id, tx.action_type)} className="h-7 w-7 text-rose-400"><Trash2 size={14} /></Button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* DESKTOP TABLE VIEW */}
-          <div className="hidden md:block bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-xl print:hidden">
-             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-slate-950 text-slate-400 uppercase font-bold text-xs border-b border-slate-800">
-                <tr><th className="p-4">Date</th><th className="p-4">Type</th><th className="p-4">Item</th><th className="p-4 text-center">Qty</th><th className="p-4 text-right">Amount</th><th className="p-4 text-right">Profit</th><th className="p-4">Cashier</th><th className="p-4 text-right">Action</th></tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/50">
-                {filtered.map((tx) => {
-                  const isProfit = ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)) > 0;
-                  const isEditing = editingId === tx.id;
-                  const typeColor = tx.action_type === 'SALE' ? 'bg-emerald-500/10 text-emerald-400' : tx.action_type === 'RESERVE' ? 'bg-yellow-500/10 text-yellow-400' : tx.action_type === 'DEBT' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400';
-                  const displayType = tx.action_type === 'RESERVE' ? 'BOOKING' : tx.action_type === 'DEBT' ? 'HUTANG' : tx.action_type;
-                  
-                  return (
-                    <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="p-4 text-slate-400 font-mono text-xs">{new Date(tx.created_at).toLocaleDateString()} <br/><span className="opacity-50">{new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></td>
-                      <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${typeColor}`}>{displayType}</span></td>
-                      <td className="p-4 font-medium text-slate-200">{tx.bale_type}{isEditing ? <input value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} className="block mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" /> : tx.remarks && <div className="text-xs text-slate-500 italic mt-0.5">{tx.remarks}</div>}</td>
-                      <td className="p-4 text-center font-bold">{tx.qty}</td>
-                      <td className="p-4 text-right font-mono">{isEditing ? <input type="number" value={editForm.price} onChange={(e) => setEditForm({...editForm, price: Number(e.target.value)})} className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right text-white" /> : (tx.price || 0).toFixed(2)}</td>
-                      <td className={`p-4 text-right font-mono font-bold ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>{tx.action_type === 'SALE' ? ((tx.price || 0) - ((tx.cost_price || 0) * tx.qty)).toFixed(2) : '-'}</td>
-                      <td className="p-4 text-slate-400 text-xs">{tx.operator}</td>
-                      <td className="p-4 flex justify-end gap-2">
-                        {isEditing ? ( <><button onClick={saveEdit} className="p-1.5 text-emerald-400 bg-emerald-400/10 rounded"><Save size={16}/></button><button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 bg-slate-800 rounded"><X size={16}/></button></> ) : (
-                          <>
-                             {tx.action_type === 'SALE' && tx.receipt_no && <button onClick={() => handleReprint(tx)} className="p-1.5 text-slate-400 bg-slate-800 rounded hover:bg-slate-700"><Printer size={16}/></button>}
-                             {(tx.action_type === 'RESERVE' || tx.action_type === 'DEBT') && <button onClick={() => openSettleModal(tx)} className="p-1.5 text-yellow-400 bg-yellow-400/10 rounded hover:bg-yellow-400/20"><CheckCircle size={16}/></button>}
-                            <button onClick={() => startEdit(tx)} className="p-1.5 text-blue-400 hover:bg-blue-400/10 rounded"><Edit size={16}/></button>
-                            {tx.action_type === 'RESERVE' ? <button onClick={() => handleDelete(tx.id, 'RESERVE')} className="p-1.5 text-rose-400 hover:bg-rose-400/10 rounded"><Undo2 size={16}/></button> : <button onClick={() => handleDelete(tx.id, tx.action_type)} className="p-1.5 text-rose-400 hover:bg-rose-400/10 rounded"><Trash2 size={16}/></button>}
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot className="bg-slate-950 border-t-2 border-slate-700 font-bold">
-                <tr><td colSpan={4} className="p-4 text-right uppercase text-xs text-slate-400">Total Sales Only</td><td className="p-4 text-right font-mono text-white">RM {totalSale.toFixed(2)}</td><td className="p-4 text-right font-mono text-emerald-400">RM {totalProfit.toFixed(2)}</td><td colSpan={2}></td></tr>
-              </tfoot>
-            </table>
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
-      {settleId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-6">
-            <div className="text-center"><h2 className="text-xl font-bold text-white">Selesaikan Bayaran</h2><p className="text-slate-400 text-sm">Convert to Sale</p></div>
-            <div><label className="text-xs uppercase font-bold text-slate-500 mb-1 block">Final Full Price (RM)</label><input type="number" value={settleAmount} onChange={e => setSettleAmount(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-emerald-500 outline-none text-lg font-mono" /></div>
-            <div className="grid gap-2">
-              <button onClick={() => handleSettle('CASH')} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-lg border border-slate-700 text-emerald-400 font-bold"><Banknote size={18}/> Cash</button>
-              <button onClick={() => handleSettle('QR_PAY')} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-lg border border-slate-700 text-pink-400 font-bold"><QrCode size={18}/> QR Pay</button>
-              <button onClick={() => handleSettle('TRANSFER')} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-lg border border-slate-700 text-blue-400 font-bold"><Smartphone size={18}/> Transfer</button>
+      {/* SETTLE MODAL */}
+      <Dialog open={!!settleId} onOpenChange={(open) => !open && setSettleId(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Settle Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Final Amount (RM)</label>
+              <Input type="number" value={settleAmount} onChange={e => setSettleAmount(e.target.value)} className="text-lg font-bold" />
             </div>
-            <button onClick={() => setSettleId(null)} className="w-full py-2 text-slate-500 hover:text-white text-sm">Cancel</button>
+            <div className="grid gap-2">
+              <Button variant="outline" onClick={() => handleSettle('CASH')} className="justify-start"><Banknote size={16} className="mr-2 text-emerald-600" /> Cash</Button>
+              <Button variant="outline" onClick={() => handleSettle('QR_PAY')} className="justify-start"><QrCode size={16} className="mr-2 text-pink-600" /> QR Pay</Button>
+              <Button variant="outline" onClick={() => handleSettle('TRANSFER')} className="justify-start"><Smartphone size={16} className="mr-2 text-blue-600" /> Transfer</Button>
+            </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSettleId(null)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
